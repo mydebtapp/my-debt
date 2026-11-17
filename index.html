@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<meta name="mobile-web-app-capable" content="yes">
+<title>My Debt</title>
+<link rel="icon" type="image/jpeg" href="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0b0f19;
+    --c: #111827;
+    --l: #1f2937;
+    --o: #f97316;
+    --w: #fff;
+    --m: #9ca3af;
+    --card-radius: 20px;
+  }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--w);
+    font: 16px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  body {
+    max-width: 640px;
+    margin: auto;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(110px + env(safe-area-inset-bottom));
+  }
+  h1 { font-size: 24px; margin: 0; }
+  h1 b, .o { color: var(--o); }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--m); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .user-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--c); border: 1px solid var(--l);
+    padding: 6px 14px; border-radius: 30px; font-weight: 600; font-size: 14px;
+  }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--o);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;
+  }
+  
+  .balance-card {
+    text-align: center; padding: 32px 20px; margin-bottom: 20px;
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    border: 1px solid var(--l); border-radius: var(--card-radius);
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+  }
+  .balance-title { font-size: 13px; color: var(--m); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .balance-amount { font-size: 42px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
+  
+  .card {
+    background: var(--c); border: 1px solid var(--l);
+    border-radius: var(--card-radius); padding: 18px; margin-bottom: 14px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+  }
+  .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .k { background: #0b0f19; border: 1px solid var(--l); border-radius: 14px; padding: 14px; }
+  .kl { font-size: 12px; color: var(--m); }
+  .kv { font-size: 18px; font-weight: 700; margin-top: 4px; }
+  
+  .bar { height: 8px; background: var(--l); border-radius: 6px; overflow: hidden; margin: 10px 0; }
+  .bar i { display: block; height: 100%; background: var(--o); border-radius: 6px; transition: width 0.4s ease; }
+  
+  .m { color: var(--m); font-size: 13px; }
+  .r { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  
+  input, select {
+    width: 100%; min-height: 50px; border-radius: 14px;
+    border: 1px solid #374151; background: #0b0f19; color: var(--w);
+    padding: 10px 16px; font: 16px inherit; margin-bottom: 12px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--o); border-color: transparent; }
+  label { display: block; font-size: 13px; color: var(--m); margin: 0 0 6px; font-weight: 500; }
+  
+  button {
+    font: 700 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
+    min-height: 50px; border-radius: 14px; border: 0;
+    background: var(--o); color: #fff; padding: 10px 20px;
+    cursor: pointer; width: 100%; margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(249,115,22,0.3); transition: transform 0.1s, opacity 0.2s;
+  }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  button.s { background: transparent; border: 1px solid var(--l); color: var(--w); box-shadow: none; }
+  button.t { width: auto; min-height: 36px; margin: 0; background: none; color: var(--m); font-weight: 450; box-shadow: none; padding: 0; }
+  
+  .fab {
+    position: fixed; right: 20px; bottom: calc(90px + env(safe-area-inset-bottom));
+    width: auto; border-radius: 30px; padding: 14px 24px;
+    box-shadow: 0 8px 25px rgba(249,115,22,0.4); z-index: 40;
+  }
+  
+  .nav-bar {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: 92%; max-width: 400px; background: rgba(17, 24, 39, 0.9);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--l); border-radius: 30px;
+    display: flex; justify-content: space-around; padding: 10px; z-index: 50;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .nav-btn {
+    background: none; border: 0; color: var(--m); font-size: 12px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+    min-height: auto; margin: 0; box-shadow: none; width: auto; padding: 6px 12px; border-radius: 12px;
+  }
+  .nav-btn.active { color: var(--o); background: rgba(249,115,22,0.1); }
+  
+  .ab { border-top: 1px solid var(--l); padding: 12px 0; }
+  .ab a { color: var(--o); text-decoration: none; font-weight: 600; }
+  
+  #splash {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 999; animation: fo 0.4s 1.4s forwards;
+  }
+  #splash img {
+    width: 130px; height: auto; border-radius: 16px;
+    animation: pop 0.7s cubic-bezier(.2,1.4,.4,1);
+  }
+  #splash h1 { margin-top: 16px; animation: pop 0.7s 0.15s both; }
+  @keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes fo { to { opacity: 0; visibility: hidden; } }
+  
+  #toast {
+    position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
+    background: var(--o); color: #fff; padding: 12px 20px; border-radius: 24px;
+    font-weight: 700; opacity: 0; pointer-events: none; transition: 0.25s;
+    z-index: 100; max-width: 90%; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <img src="https://i.postimg.cc/vBd7MBgh/My-Debt-V2Text.jpg" alt="My Debt Logo">
+  <h1>My <b>Debt</b></h1>
+</div>
+
+<div id="app"></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+"use strict";
+/* ---------- Configuración ---------- */
+const SUPABASE_URL = "https://hrmelkvknhmgcbvmriem.supabase.co";
+const SUPABASE_KEY = "sb_publishable__oVZNq8alJi2Az3tSLHLPg_9Crx1bAu";
+const OK = !SUPABASE_URL.includes("TU-PROYECTO");
+const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "list" };
+const $ = s => document.querySelector(s), app = $("#app");
+
+/* ---------- Utilidades ---------- */
+const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fm = (n, c) => new Intl.NumberFormat("es-MX", { style: "currency", currency: c }).format(n || 0);
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const today = () => iso(new Date()), fd = d => new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+let tt;
+const toast = m => {
+  const t = $("#toast");
+  t.textContent = m;
+  t.classList.add("on");
+  clearTimeout(tt);
+  tt = setTimeout(() => t.classList.remove("on"), 3000);
+};
+
+const FQ = { diario: "Diario", semanal: "Semanal", quincenal: "Quincenal", mensual: "Mensual", dia_mes: "Día específico del mes" };
+const PD = { diario: 1, semanal: 7, quincenal: 15, mensual: 30, dia_mes: 30 };
+const PM = { diario: 30, semanal: 52/12, quincenal: 2, mensual: 1, dia_mes: 1 };
+
+/* ---------- Métricas Financieras ---------- */
+function nextPay(d) {
+  const t = new Date(today() + "T00:00"), s = new Date(d.fecha_inicio + "T00:00");
+  if (d.frecuencia === "mensual" || d.frecuencia === "dia_mes") {
+    const day = d.frecuencia === "dia_mes" && d.dia_mes ? d.dia_mes : s.getDate();
+    for (let i = 0; i < 14; i++) {
+      const last = new Date(t.getFullYear(), t.getMonth() + i + 1, 0).getDate();
+      const c = new Date(t.getFullYear(), t.getMonth() + i, Math.min(day, last));
+      if (c >= t) return c;
+    }
+  }
+  const st = PD[d.frecuencia], k = Math.max(0, Math.ceil((t - s) / 864e5 / st));
+  return addDays(s, k * st);
+}
+
+function met(d, ab) {
+  const paid = ab.reduce((s, a) => s + +a.monto, 0);
+  const days = Math.max(0, (Date.now() - new Date(d.fecha_inicio)) / 864e5);
+  const total = +d.monto + d.monto * (d.tasa / 100) * days / 365;
+  const saldo = Math.max(0, total - paid);
+  const cuota = d.ingreso_mensual * d.pct_ingreso / 100 / PM[d.frecuencia];
+  const n = cuota > 0 && saldo > 0 ? Math.ceil(saldo / cuota) : null;
+  const esp = Math.floor(days / PD[d.frecuencia]);
+  return {
+    paid, total, saldo, cuota,
+    avance: total ? Math.min(1, paid / total) : 0,
+    fin: saldo <= 0 ? "Liquidada" : n ? fd(addDays(new Date(), n * PD[d.frecuencia])) : "—",
+    punt: esp <= 0 ? 100 : Math.min(100, Math.round(ab.length / esp * 100)),
+    next: nextPay(d)
+  };
+}
+
+/* ---------- Carga de Datos y Perfiles ---------- */
+async function load() {
+  const p = await sb.from("profiles").select("*").eq("id", U.id).single();
+  PRO = p.data || {};
+  const a = await sb.from("deudas").select("*").order("created_at");
+  const b = await sb.from("abonos").select("*").order("fecha");
+  DEB = a.data || [];
+  AB = {};
+  (b.data || []).forEach(x => (AB[x.deuda_id] = AB[x.deuda_id] || []).push(x));
+}
+
+async function upload(f) {
+  const p = `${U.id}/${crypto.randomUUID()}.${(f.name.split(".").pop() || "jpg").replace(/\W/g, "")}`;
+  const r = await sb.storage.from("comprobantes").upload(p, f, { contentType: f.type });
+  if (r.error) throw r.error;
+  return sb.storage.from("comprobantes").getPublicUrl(p).data.publicUrl;
+}
+
+/* ---------- Navegación y Vistas ---------- */
+const go = (n, id) => { V = { n, id }; render(); window.scrollTo(0, 0); };
+function render() {
+  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet }[V.n] || vList)();
+}
+
+const navBar = () => U && PRO.username ? `
+<nav class="nav-bar">
+  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">🏠 Inicio</button>
+  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">➕ Nuevo</button>
+  <button class="nav-btn" onclick="sb.auth.signOut()">🚪 Salir</button>
+</nav>` : "";
+
+/* ---------- Vista Autenticación ---------- */
+function vAuth() {
+  app.innerHTML = `
+  <div style="padding-top:40px">
+    <div class="card" style="text-align:center;padding:30px">
+      <img src="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg" style="width:70px;height:70px;border-radius:16px;margin-bottom:15px">
+      <h1>My <b class="o">Debt</b></h1>
+      <p class="m" style="margin-top:6px;margin-bottom:20px">Control financiero inteligente</p>
+      <label>Correo electrónico</label>
+      <input id="em" type="email" autocomplete="email">
+      <label>Contraseña</label>
+      <input id="pw" type="password" autocomplete="current-password">
+      <button onclick="auth(0)">Iniciar Sesión</button>
+      <button class="s" onclick="auth(1)">Crear Cuenta Nueva</button>
+    </div>
+  </div>`;
+}
+
+async function auth(reg) {
+  if (!OK) return toast("Configura Supabase");
+  const email = $("#em").value.trim(), password = $("#pw").value;
+  if (!email || !password) return toast("Completa los campos");
+  const r = reg ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+  if (r.error) return toast(r.error.message);
+  if (reg && !r.data.session) return toast("Revisa tu correo para confirmar cuenta");
+}
+
+/* ---------- Onboarding Username ---------- */
+function vOnboarding() {
+  app.innerHTML = `
+  <div style="padding-top:30px">
+    <div class="card">
+      <h2>Crea tu nombre de usuario</h2>
+      <p class="m" style="margin-bottom:15px">Elige un identificador único para tu perfil (ej. @jhon123).</p>
+      <label>Nombre de usuario</label>
+      <input id="un" placeholder="@tu_usuario">
+      <button onclick="saveUsername()">Continuar</button>
+    </div>
+  </div>`;
+}
+
+async function saveUsername() {
+  let u = $("#un").value.trim().toLowerCase();
+  if (!u.startsWith("@")) u = "@" + u;
+  if (u.length < 4) return toast("Mínimo 3 caracteres");
+  const { error } = await sb.from("profiles").insert({ id: U.id, username: u });
+  if (error) return toast(error.code === "23505" ? "Ese nombre de usuario ya está ocupado" : "Error al guardar");
+  await load();
+  go("list");
+}
+
+/* ---------- Vista Principal (Dashboard) ---------- */
+function vList() {
+  const by = {};
+  let totalSal = 0;
+  DEB.forEach(d => {
+    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0 };
+    x.t += m.total;
+    x.s += m.saldo;
+    totalSal += m.saldo;
+  });
+  
+  const mainCurrency = Object.keys(by)[0] || "MXN";
+
+  app.innerHTML = `
+  <div class="top">
+    <div class="user-pill">
+      <div class="user-avatar">${PRO.username ? PRO.username[1].toUpperCase() : "U"}</div>
+      <span>${e(PRO.username || "@usuario")}</span>
+    </div>
+  </div>
+  
+  <div class="balance-card">
+    <div class="balance-title">Deuda Total Activa</div>
+    <div class="balance-amount o">${fm(totalSal, mainCurrency)}</div>
+    <div class="m">${DEB.length} préstamos en curso</div>
+  </div>
+
+  <h2>Resumen por Moneda</h2>
+  ${Object.keys(by).map(c => {
+    const x = by[c];
+    return `
+    <div class="card">
+      <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
+      ${bar(x.t ? 1 - x.s / x.t : 0)}
+      <div class="r m" style="margin-top:6px"><span>Total original: ${fm(x.t, c)}</span><span>Restante</span></div>
+    </div>`;
+  }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">Sin deudas registradas.</p></div>`}
+
+  <h2>Mis Préstamos</h2>
+  ${DEB.map(d => {
+    const m = met(d, AB[d.id] || []);
+    return `
+    <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
+      <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
+      ${bar(m.avance)}
+      <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+    </div>`;
+  }).join("")}
+  
+  <button class="fab" onclick="go('new')">+ Nueva Deuda</button>
+  ${navBar()}`;
+}
+
+/* ---------- Vista Nuevo Préstamo ---------- */
+function vNew() {
+  app.innerHTML = `
+  <div class="top">
+    <button class="t" onclick="go('list')">← Volver</button>
+    <h1>Nueva <b>Deuda</b></h1>
+  </div>
+  <div class="card">
+    <label>Acreedor / Nombre</label>
+    <input id="n" placeholder="Ej. Préstamo Mamá">
+    <div class="g">
+      <div><label>Monto Prestado</label><input id="mo" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>Moneda</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
+    </div>
+    <div class="g">
+      <div><label>Ingreso Mensual</label><input id="im" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>% Destinado a Deuda</label><input id="pc" type="number" inputmode="decimal" step="0.1" value="20"></div>
+    </div>
+    <label>Frecuencia de Pago</label>
+    <select id="fq" onchange="$('#dm').parentNode.style.display=this.value==='dia_mes'?'block':'none'">
+      ${Object.keys(FQ).map(k => `<option value="${k}">${FQ[k]}</option>`).join("")}
+    </select>
+    <div style="display:none"><label>Día específico del mes (1-31)</label><input id="dm" type="number" min="1" max="31"></div>
+    <div class="g">
+      <div><label>Tasa Interés Anual %</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
+      <div><label>Fecha de Inicio</label><input id="fi" type="date" value="${today()}"></div>
+    </div>
+    <button onclick="saveDeb()">Guardar Préstamo</button>
+  </div>
+  ${navBar()}`;
+}
+
+async function saveDeb() {
+  const d = {
+    nombre: $("#n").value.trim(),
+    monto: +$("#mo").value,
+    moneda: $("#mn").value,
+    ingreso_mensual: +$("#im").value || 0,
+    pct_ingreso: +$("#pc").value || 0,
+    frecuencia: $("#fq").value,
+    dia_mes: +$("#dm").value || null,
+    tasa: +$("#tx").value || 0,
+    fecha_inicio: $("#fi").value || today()
+  };
+  if (!d.nombre || !(d.monto > 0)) return toast("Indica nombre y monto válido");
+  const r = await sb.from("deudas").insert(d);
+  if (r.error) return toast(r.error.message);
+  await load();
+  go("list");
+  toast("Deuda creada con éxito");
+}
+
+/* ---------- Vista Detalle Préstamo ---------- */
+function vDet() {
+  const d = DEB.find(x => x.id === V.id);
+  if (!d) return go("list");
+  const ab = (AB[d.id] || []).slice().reverse();
+  const m = met(d, AB[d.id] || []);
+  const rem = addDays(m.next, -1);
+  rem.setHours(9, 0, 0, 0);
+
+  app.innerHTML = `
+  <div class="top">
+    <button class="t" onclick="go('list')">← Volver</button>
+    <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">Eliminar</button>
+  </div>
+  <div class="card" style="text-align:center;padding:24px">
+    <h1 style="margin-bottom:4px">${e(d.nombre)}</h1>
+    <p class="m">${FQ[d.frecuencia]} · ${d.tasa ? d.tasa + "% anual" : "Sin intereses"}</p>
+    <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
+    <div class="m">Saldo Insoluto (de ${fm(d.monto, d.moneda)} original)</div>
+    ${bar(m.avance)}
+    <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+  </div>
+  
+  <h2>Métricas Financieras</h2>
+  <div class="card g">
+    <div class="k"><div class="kl">Cuota Periódica</div><div class="kv">${fm(m.cuota, d.moneda)}</div></div>
+    <div class="k"><div class="kl">Compromiso s/ Ingreso</div><div class="kv o">${d.pct_ingreso}%</div></div>
+    <div class="k"><div class="kl">Liquidación Estimada</div><div class="kv" style="font-size:15px">${m.fin}</div></div>
+    <div class="k"><div class="kl">Puntualidad</div><div class="kv o">${m.punt}%</div></div>
+  </div>
+
+  <button onclick="wa('${d.id}')">📲 Compartir por WhatsApp</button>
+  
+  <div class="card">
+    <h2>Registrar Abono</h2>
+    <div class="g">
+      <div><label>Fecha</label><input id="af" type="date" value="${today()}"></div>
+      <div><label>Monto (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+    </div>
+    <label>Nota / Comentario</label>
+    <input id="an" placeholder="Ej. Transferencia quincenal">
+    <label>Comprobante (Imagen)</label>
+    <input id="ai" type="file" accept="image/*">
+    <button id="abBtn" onclick="addAb('${d.id}')">Guardar Abono</button>
+  </div>
+
+  <div class="card">
+    <h2>Historial de Abonos</h2>
+    ${ab.map(a => `
+    <div class="ab">
+      <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)}</span></div>
+      ${a.nota ? `<div class="m">${e(a.nota)}</div>` : ""}
+      ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">Ver comprobante ↗</a>` : ""}
+      <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">Quitar abono</button></div>
+    </div>`).join("") || `<p class="m">Sin abonos registrados.</p>`}
+  </div>
+  ${navBar()}`;
+}
+
+async function addAb(id) {
+  const monto = +$("#am").value, fecha = $("#af").value, f = $("#ai").files[0];
+  if (!(monto > 0) || !fecha) return toast("Indica fecha y monto válido");
+  const btn = $("#abBtn");
+  btn.disabled = true;
+  btn.textContent = "Subiendo y guardando…";
+  try {
+    const url = f ? await upload(f) : null;
+    const r = await sb.from("abonos").insert({ deuda_id: id, fecha, monto, nota: $("#an").value.trim() || null, comprobante_url: url });
+    if (r.error) throw r.error;
+    await load();
+    go("det", id);
+    toast("Abono registrado con éxito");
+  } catch (x) {
+    toast(x.message);
+    btn.disabled = false;
+    btn.textContent = "Guardar Abono";
+  }
+}
+
+async function delAb(id) {
+  if (!confirm("¿Quitar este abono?")) return;
+  const r = await sb.from("abonos").delete().eq("id", id);
+  if (r.error) return toast(r.error.message);
+  await load();
+  render();
+}
+
+async function delDeb(id) {
+  if (!confirm("¿Eliminar este préstamo y sus abonos?")) return;
+  const r = await sb.from("deudas").delete().eq("id", id);
+  if (r.error) return toast(r.error.message);
+  await load();
+  go("list");
+}
+
+function wa(id) {
+  const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []), link = location.href.split("#")[0] + "#/v/" + d.share_token;
+  const msg = `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública de solo lectura:\n${link}`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+
+/* ---------- Vista Pública (Sin Login) ---------- */
+async function vShared(t) {
+  app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">Cargando detalles del préstamo…</p></div>`;
+  const r = await sb.rpc("shared_debt", { t });
+  const j = r.data;
+  if (r.error || !j || !j.deuda) {
+    return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>Enlace no válido</h2><p class="m">Este enlace ya no está disponible o fue eliminado.</p></div>`;
+  }
+  const d = { ...j.deuda, ingreso_mensual: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
+  app.innerHTML = `
+  <div class="top">
+    <h1>My <b>Debt</b></h1>
+    <span class="user-pill">Modo Lectura</span>
+  </div>
+  <div class="card" style="text-align:center;padding:24px">
+    <h2>${e(d.nombre)}</h2>
+    <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
+    <div class="m">Saldo Restante (de ${fm(d.monto, d.moneda)} original)</div>
+    ${bar(m.avance)}
+    <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+  </div>
+  <div class="card">
+    <h2>Historial de Abonos Recibidos</h2>
+    ${j.abonos.slice().reverse().map(a => `
+    <div class="ab r">
+      <span><b class="o">${fm(a.monto, d.moneda)}</b><span class="m"> ${e(a.nota || "")}</span></span>
+      <span class="m">${fd(a.fecha)}</span>
+    </div>`).join("") || `<p class="m">Sin abonos registrados.</p>`}
+  </div>`;
+}
+
+/* ---------- Arranque de la App ---------- */
+setTimeout(() => $("#splash").remove(), 2000);
+(async () => {
+  const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})$/i);
+  if (sh && OK) return vShared(sh[1]);
+  if (!OK) return vAuth();
+  sb.auth.onAuthStateChange(async (_, s) => {
+    U = s ? s.user : null;
+    if (U) {
+      await load();
+      if (!PRO.username) go("onboarding"); else go("list");
+    } else {
+      go("auth");
+    }
+  });
+})();
+</script>
+</body>
+</html>
