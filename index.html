@@ -7,8 +7,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>My Debt</title>
 <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg">
-<!-- Script oficial de hCaptcha -->
-<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -155,7 +153,7 @@ const SUPABASE_KEY = "sb_publishable__oVZNq8alJi2Az3tSLHLPg_9Crx1bAu";
 const OK = !SUPABASE_URL.includes("TU-PROYECTO");
 const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "list" };
+let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "auth" };
 let hideAmounts = localStorage.getItem("my_debt_hide_amounts") === "true";
 const $ = s => document.querySelector(s), app = $("#app");
 
@@ -279,10 +277,16 @@ const dict = {
 
 let currentLang = localStorage.getItem("my_debt_lang") || "es";
 const t = k => (dict[currentLang] && dict[currentLang][k]) || k;
+
 const toggleLang = () => {
   currentLang = currentLang === "es" ? "en" : "es";
   localStorage.setItem("my_debt_lang", currentLang);
-  render();
+  // Re-validación estricta de seguridad antes de pintar al cambiar idioma
+  if (!U && V.n !== 'auth') {
+    go('auth');
+  } else {
+    render();
+  }
 };
 
 const toggleHideAmounts = () => {
@@ -353,6 +357,7 @@ function met(d, ab) {
 
 /* ---------- Carga de Datos y Perfiles ---------- */
 async function load() {
+  if (!U) return;
   const p = await sb.from("profiles").select("*").eq("id", U.id).single();
   PRO = p.data || {};
   const a = await sb.from("deudas").select("*").order("created_at");
@@ -369,10 +374,25 @@ async function upload(f) {
   return sb.storage.from("comprobantes").getPublicUrl(p).data.publicUrl;
 }
 
-/* ---------- Navegación y Vistas ---------- */
-const go = (n, id) => { V = { n, id }; render(); window.scrollTo(0, 0); };
+/* ---------- Navegación y Vistas con Blindaje de Seguridad ---------- */
+const go = (n, id) => {
+  // BLOQUEO ABSOLUTO: Si no hay usuario autenticado y no es la ruta pública, forzar login
+  if (!U && n !== 'auth') {
+    V = { n: "auth" };
+  } else {
+    V = { n, id };
+  }
+  render();
+  window.scrollTo(0, 0);
+};
+
 function render() {
-  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet, profile: vProfile }[V.n] || vList)();
+  // Doble validación de seguridad antes de renderizar vistas protegidas
+  if (!U && V.n !== 'auth') {
+    vAuth();
+    return;
+  }
+  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet, profile: vProfile }[V.n] || vAuth)();
 }
 
 const navBar = () => U && PRO.username ? `
@@ -398,9 +418,6 @@ function vAuth() {
       <label>${currentLang==='es'?'Contraseña':'Password'}</label>
       <input id="pw" type="password" autocomplete="current-password">
 
-      <!-- Contenedor del Widget hCaptcha -->
-      <div class="h-captcha" data-sitekey="090a7e58-412c-4e52-9de6-2c0cb2bc03fe" style="margin: 15px 0; display: flex; justify-content: center;"></div>
-
       <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
       <button class="s" onclick="auth(1)">${currentLang==='es'?'Crear Cuenta Nueva':'Create New Account'}</button>
       
@@ -416,25 +433,17 @@ async function auth(reg) {
   const email = $("#em").value.trim(), password = $("#pw").value;
   if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
 
-  // OBTENER EL TOKEN DEL CAPTCHA PARA ENVIARLO A SUPABASE
-  const captchaToken = window.hcaptcha ? hcaptcha.getResponse() : null;
-  if (!captchaToken) return toast(currentLang==='es' ? "Por favor completa el captcha" : "Please complete the captcha");
-
-  const options = { options: { captchaToken } };
-
   const r = reg 
-    ? await sb.auth.signUp({ email, password }, options) 
-    : await sb.auth.signInWithPassword({ email, password }, options);
+    ? await sb.auth.signUp({ email, password }) 
+    : await sb.auth.signInWithPassword({ email, password });
 
-  if (r.error) {
-    if (window.hcaptcha) hcaptcha.reset();
-    return toast(r.error.message);
-  }
+  if (r.error) return toast(r.error.message);
   if (reg && !r.data.session) return toast(currentLang==='es'?"Revisa tu correo para confirmar cuenta":"Check your email to confirm account");
 }
 
 /* ---------- Onboarding Username ---------- */
 function vOnboarding() {
+  if (!U) return go('auth');
   app.innerHTML = `
   <div style="padding-top:30px">
     <div class="card">
@@ -448,6 +457,7 @@ function vOnboarding() {
 }
 
 async function saveUsername() {
+  if (!U) return go('auth');
   let u = $("#un").value.trim().toLowerCase();
   if (!u.startsWith("@")) u = "@" + u;
   if (u.length < 4) return toast(currentLang==='es'?"Mínimo 3 caracteres":"Minimum 3 characters");
@@ -459,6 +469,7 @@ async function saveUsername() {
 
 /* ---------- Vista Perfil de Usuario ---------- */
 function vProfile() {
+  if (!U) return go('auth');
   app.innerHTML = `
   <div class="top">
     <button class="t" onclick="go('list')">← ${t('back')}</button>
@@ -505,6 +516,7 @@ function toggleShowPass() {
 }
 
 async function updatePassword() {
+  if (!U) return go('auth');
   const np = $("#newPw").value;
   if (!np || np.length < 6) return toast(currentLang==='es'?"La contraseña debe tener al menos 6 caracteres":"Password must be at least 6 chars");
   const { error } = await sb.auth.updateUser({ password: np });
@@ -516,6 +528,7 @@ async function updatePassword() {
 
 /* ---------- Vista Principal (Dashboard) ---------- */
 function vList() {
+  if (!U) return go('auth');
   const by = {};
   let totalSal = 0;
   DEB.forEach(d => {
@@ -577,6 +590,7 @@ function vList() {
 
 /* ---------- Vista Nuevo Préstamo ---------- */
 function vNew() {
+  if (!U) return go('auth');
   const fq = getFQ();
   app.innerHTML = `
   <div class="top">
@@ -609,6 +623,7 @@ function vNew() {
 }
 
 async function saveDeb() {
+  if (!U) return go('auth');
   const d = {
     nombre: $("#n").value.trim(),
     monto: +$("#mo").value,
@@ -630,6 +645,7 @@ async function saveDeb() {
 
 /* ---------- Vista Detalle Préstamo ---------- */
 function vDet() {
+  if (!U) return go('auth');
   const d = DEB.find(x => x.id === V.id);
   if (!d) return go("list");
   const ab = (AB[d.id] || []).slice().reverse();
@@ -687,6 +703,7 @@ function vDet() {
 }
 
 async function addAb(id) {
+  if (!U) return go('auth');
   const monto = +$("#am").value, fecha = $("#af").value, f = $("#ai").files[0];
   if (!(monto > 0) || !fecha) return toast(currentLang==='es'?"Indica fecha y monto válido":"Provide valid date and amount");
   const btn = $("#abBtn");
@@ -707,6 +724,7 @@ async function addAb(id) {
 }
 
 async function delAb(id) {
+  if (!U) return go('auth');
   if (!confirm(currentLang==='es'?"¿Quitar este abono?":"Remove this payment?")) return;
   const r = await sb.from("abonos").delete().eq("id", id);
   if (r.error) return toast(r.error.message);
@@ -715,6 +733,7 @@ async function delAb(id) {
 }
 
 async function delDeb(id) {
+  if (!U) return go('auth');
   if (!confirm(currentLang==='es'?"¿Eliminar este préstamo y sus abonos?":"Delete this loan and its payments?")) return;
   const r = await sb.from("deudas").delete().eq("id", id);
   if (r.error) return toast(r.error.message);
@@ -723,6 +742,7 @@ async function delDeb(id) {
 }
 
 function wa(id) {
+  if (!U) return go('auth');
   const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []);
   const baseUrl = location.href.split("#")[0];
   const link = `${baseUrl}#/v/${d.share_token}?lang=${currentLang}`;
@@ -777,7 +797,7 @@ async function vShared(tkn) {
   const langParam = urlParams.get('lang');
   if (langParam && (langParam === 'es' || langParam === 'en')) {
     currentLang = langParam;
-    localStorage.getItem("my_debt_lang", currentLang);
+    localStorage.setItem("my_debt_lang", currentLang);
   }
 
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})/i);
