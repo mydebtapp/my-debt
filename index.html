@@ -116,7 +116,7 @@
   #splash {
     position: fixed; inset: 0; background: #000;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 999; animation: fo 0.4s 1.4s forwards;
+    z-index: 999;
   }
   #splash img {
     width: 130px; height: auto; border-radius: 16px;
@@ -124,7 +124,6 @@
   }
   #splash h1 { margin-top: 16px; animation: pop 0.7s 0.15s both; }
   @keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes fo { to { opacity: 0; visibility: hidden; } }
   
   #toast {
     position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
@@ -157,23 +156,110 @@ const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "list" };
 const $ = s => document.querySelector(s), app = $("#app");
 
+/* ---------- Sistema de Idiomas (i18n) ---------- */
+const dict = {
+  es: {
+    totalDebt: "Deuda Total Activa",
+    loansInCourse: "préstamos en curso",
+    currencySummary: "Resumen por Moneda",
+    myLoans: "Mis Préstamos",
+    newDebtBtn: "+ Nueva Deuda",
+    back: "← Volver",
+    saveLoan: "Guardar Préstamo",
+    paidOff: "liquidado",
+    next: "Próx",
+    noDebts: "Sin deudas registradas.",
+    creditor: "Acreedor / Nombre",
+    amountBorrowed: "Monto Prestado",
+    monthlyIncome: "Ingreso Mensual",
+    pctDebt: "% Destinado a Deuda",
+    frequency: "Frecuencia de Pago",
+    annualInterest: "Tasa Interés Anual %",
+    startDate: "Fecha de Inicio",
+    financialMetrics: "Métricas Financieras",
+    periodicQuota: "Cuota Periódica",
+    incomeCommitment: "Compromiso s/ Ingreso",
+    estPayoff: "Liquidación Estimada",
+    punctuality: "Puntualidad",
+    shareWhatsApp: "📲 Compartir por WhatsApp",
+    registerPayment: "Registrar Abono",
+    date: "Fecha",
+    note: "Nota / Comentario",
+    receipt: "Comprobante (Imagen)",
+    savePayment: "Guardar Abono",
+    paymentHistory: "Historial de Abonos",
+    viewReceipt: "Ver comprobante ↗",
+    removePayment: "Quitar abono",
+    deleteLoan: "Eliminar"
+  },
+  en: {
+    totalDebt: "Total Active Debt",
+    loansInCourse: "loans in progress",
+    currencySummary: "Summary by Currency",
+    myLoans: "My Loans",
+    newDebtBtn: "+ New Debt",
+    back: "← Back",
+    saveLoan: "Save Loan",
+    paidOff: "paid off",
+    next: "Next",
+    noDebts: "No debts recorded.",
+    creditor: "Creditor / Name",
+    amountBorrowed: "Amount Borrowed",
+    monthlyIncome: "Monthly Income",
+    pctDebt: "% Allocated to Debt",
+    frequency: "Payment Frequency",
+    annualInterest: "Annual Interest %",
+    startDate: "Start Date",
+    financialMetrics: "Financial Metrics",
+    periodicQuota: "Periodic Quota",
+    incomeCommitment: "Income Commitment",
+    estPayoff: "Estimated Payoff",
+    punctuality: "Punctuality",
+    shareWhatsApp: "📲 Share via WhatsApp",
+    registerPayment: "Register Payment",
+    date: "Date",
+    note: "Note / Comment",
+    receipt: "Receipt (Image)",
+    savePayment: "Save Payment",
+    paymentHistory: "Payment History",
+    viewReceipt: "View receipt ↗",
+    removePayment: "Remove payment",
+    deleteLoan: "Delete"
+  }
+};
+
+let currentLang = localStorage.getItem("my_debt_lang") || "es";
+const t = k => (dict[currentLang] && dict[currentLang][k]) || k;
+const toggleLang = () => {
+  currentLang = currentLang === "es" ? "en" : "es";
+  localStorage.setItem("my_debt_lang", currentLang);
+  render();
+};
+
 /* ---------- Utilidades ---------- */
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fm = (n, c) => new Intl.NumberFormat("es-MX", { style: "currency", currency: c }).format(n || 0);
+const fm = (n, c) => new Intl.NumberFormat(currentLang === 'es' ? "es-MX" : "en-US", { style: "currency", currency: c }).format(n || 0);
 const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-const today = () => iso(new Date()), fd = d => new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const today = () => iso(new Date()), fd = d => new Date(d).toLocaleDateString(currentLang === 'es' ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const bar = pct => `<div class="bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div>`;
 
 let tt;
 const toast = m => {
-  const t = $("#toast");
-  t.textContent = m;
-  t.classList.add("on");
+  const tbox = $("#toast");
+  tbox.textContent = m;
+  tbox.classList.add("on");
   clearTimeout(tt);
-  tt = setTimeout(() => t.classList.remove("on"), 3000);
+  tt = setTimeout(() => tbox.classList.remove("on"), 3000);
 };
 
-const FQ = { diario: "Diario", semanal: "Semanal", quincenal: "Quincenal", mensual: "Mensual", dia_mes: "Día específico del mes" };
+const FQ = { 
+  diario: currentLang === 'es' ? "Diario" : "Daily", 
+  semanal: currentLang === 'es' ? "Semanal" : "Weekly", 
+  quincenal: currentLang === 'es' ? "Quincenal" : "Biweekly", 
+  mensual: currentLang === 'es' ? "Mensual" : "Monthly", 
+  dia_mes: currentLang === 'es' ? "Día específico del mes" : "Specific day of month" 
+};
 const PD = { diario: 1, semanal: 7, quincenal: 15, mensual: 30, dia_mes: 30 };
 const PM = { diario: 30, semanal: 52/12, quincenal: 2, mensual: 1, dia_mes: 1 };
 
@@ -203,7 +289,7 @@ function met(d, ab) {
   return {
     paid, total, saldo, cuota,
     avance: total ? Math.min(1, paid / total) : 0,
-    fin: saldo <= 0 ? "Liquidada" : n ? fd(addDays(new Date(), n * PD[d.frecuencia])) : "—",
+    fin: saldo <= 0 ? (currentLang === 'es' ? "Liquidada" : "Paid off") : n ? fd(addDays(new Date(), n * PD[d.frecuencia])) : "—",
     punt: esp <= 0 ? 100 : Math.min(100, Math.round(ab.length / esp * 100)),
     next: nextPay(d)
   };
@@ -235,9 +321,9 @@ function render() {
 
 const navBar = () => U && PRO.username ? `
 <nav class="nav-bar">
-  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">🏠 Inicio</button>
-  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">➕ Nuevo</button>
-  <button class="nav-btn" onclick="sb.auth.signOut()">🚪 Salir</button>
+  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">🏠 ${currentLang==='es'?'Inicio':'Home'}</button>
+  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">➕ ${currentLang==='es'?'Nuevo':'New'}</button>
+  <button class="nav-btn" onclick="sb.auth.signOut()">🚪 ${currentLang==='es'?'Salir':'Sign Out'}</button>
 </nav>` : "";
 
 /* ---------- Vista Autenticación ---------- */
@@ -247,13 +333,16 @@ function vAuth() {
     <div class="card" style="text-align:center;padding:30px">
       <img src="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg" style="width:70px;height:70px;border-radius:16px;margin-bottom:15px">
       <h1>My <b class="o">Debt</b></h1>
-      <p class="m" style="margin-top:6px;margin-bottom:20px">Control financiero inteligente</p>
-      <label>Correo electrónico</label>
+      <p class="m" style="margin-top:6px;margin-bottom:20px">${currentLang==='es'?'Control financiero inteligente':'Smart financial control'}</p>
+      <label>${currentLang==='es'?'Correo electrónico':'Email'}</label>
       <input id="em" type="email" autocomplete="email">
-      <label>Contraseña</label>
+      <label>${currentLang==='es'?'Contraseña':'Password'}</label>
       <input id="pw" type="password" autocomplete="current-password">
-      <button onclick="auth(0)">Iniciar Sesión</button>
-      <button class="s" onclick="auth(1)">Crear Cuenta Nueva</button>
+      <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
+      <button class="s" onclick="auth(1)">${currentLang==='es'?'Crear Cuenta Nueva':'Create New Account'}</button>
+      <div style="margin-top:20px">
+        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
+      </div>
     </div>
   </div>`;
 }
@@ -261,10 +350,10 @@ function vAuth() {
 async function auth(reg) {
   if (!OK) return toast("Configura Supabase");
   const email = $("#em").value.trim(), password = $("#pw").value;
-  if (!email || !password) return toast("Completa los campos");
+  if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
   const r = reg ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
   if (r.error) return toast(r.error.message);
-  if (reg && !r.data.session) return toast("Revisa tu correo para confirmar cuenta");
+  if (reg && !r.data.session) return toast(currentLang==='es'?"Revisa tu correo para confirmar cuenta":"Check your email to confirm account");
 }
 
 /* ---------- Onboarding Username ---------- */
@@ -272,11 +361,11 @@ function vOnboarding() {
   app.innerHTML = `
   <div style="padding-top:30px">
     <div class="card">
-      <h2>Crea tu nombre de usuario</h2>
-      <p class="m" style="margin-bottom:15px">Elige un identificador único para tu perfil (ej. @jhon123).</p>
-      <label>Nombre de usuario</label>
+      <h2>${currentLang==='es'?'Crea tu nombre de usuario':'Create your username'}</h2>
+      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @oscargl94).':'Choose a unique handle for your profile (e.g. @oscargl94).'}</p>
+      <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
       <input id="un" placeholder="@tu_usuario">
-      <button onclick="saveUsername()">Continuar</button>
+      <button onclick="saveUsername()">${currentLang==='es'?'Continuar':'Continue'}</button>
     </div>
   </div>`;
 }
@@ -284,9 +373,9 @@ function vOnboarding() {
 async function saveUsername() {
   let u = $("#un").value.trim().toLowerCase();
   if (!u.startsWith("@")) u = "@" + u;
-  if (u.length < 4) return toast("Mínimo 3 caracteres");
+  if (u.length < 4) return toast(currentLang==='es'?"Mínimo 3 caracteres":"Minimum 3 characters");
   const { error } = await sb.from("profiles").insert({ id: U.id, username: u });
-  if (error) return toast(error.code === "23505" ? "Ese nombre de usuario ya está ocupado" : "Error al guardar");
+  if (error) return toast(error.code === "23505" ? (currentLang==='es'?"Ese nombre de usuario ya está ocupado":"Username already taken") : (currentLang==='es'?"Error al guardar":"Error saving"));
   await load();
   go("list");
 }
@@ -310,37 +399,40 @@ function vList() {
       <div class="user-avatar">${PRO.username ? PRO.username[1].toUpperCase() : "U"}</div>
       <span>${e(PRO.username || "@usuario")}</span>
     </div>
+    <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 14px; border-radius:20px; font-size:12px;">
+      🌐 ${currentLang === 'es' ? '🇬🇧 English' : '🇪🇸 Español'}
+    </button>
   </div>
   
   <div class="balance-card">
-    <div class="balance-title">Deuda Total Activa</div>
+    <div class="balance-title">${t('totalDebt')}</div>
     <div class="balance-amount o">${fm(totalSal, mainCurrency)}</div>
-    <div class="m">${DEB.length} préstamos en curso</div>
+    <div class="m">${DEB.length} ${t('loansInCourse')}</div>
   </div>
 
-  <h2>Resumen por Moneda</h2>
+  <h2>${t('currencySummary')}</h2>
   ${Object.keys(by).map(c => {
     const x = by[c];
     return `
     <div class="card">
       <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
       ${bar(x.t ? 1 - x.s / x.t : 0)}
-      <div class="r m" style="margin-top:6px"><span>Total original: ${fm(x.t, c)}</span><span>Restante</span></div>
+      <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
     </div>`;
-  }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">Sin deudas registradas.</p></div>`}
+  }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
 
-  <h2>Mis Préstamos</h2>
+  <h2>${t('myLoans')}</h2>
   ${DEB.map(d => {
     const m = met(d, AB[d.id] || []);
     return `
     <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
       <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
       ${bar(m.avance)}
-      <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+      <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
     </div>`;
   }).join("")}
   
-  <button class="fab" onclick="go('new')">+ Nueva Deuda</button>
+  <button class="fab" onclick="go('new')">${t('newDebtBtn')}</button>
   ${navBar()}`;
 }
 
@@ -348,30 +440,30 @@ function vList() {
 function vNew() {
   app.innerHTML = `
   <div class="top">
-    <button class="t" onclick="go('list')">← Volver</button>
-    <h1>Nueva <b>Deuda</b></h1>
+    <button class="t" onclick="go('list')">${t('back')}</button>
+    <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
   </div>
   <div class="card">
-    <label>Acreedor / Nombre</label>
-    <input id="n" placeholder="Ej. Préstamo Mamá">
+    <label>${t('creditor')}</label>
+    <input id="n" placeholder="${currentLang==='es'?'Ej. Préstamo Mamá':'E.g. Mom Loan'}">
     <div class="g">
-      <div><label>Monto Prestado</label><input id="mo" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div><label>Moneda</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
+      <div><label>${t('amountBorrowed')}</label><input id="mo" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>${currentLang==='es'?'Moneda':'Currency'}</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
     </div>
     <div class="g">
-      <div><label>Ingreso Mensual</label><input id="im" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div><label>% Destinado a Deuda</label><input id="pc" type="number" inputmode="decimal" step="0.1" value="20"></div>
+      <div><label>${t('monthlyIncome')}</label><input id="im" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>${t('pctDebt')}</label><input id="pc" type="number" inputmode="decimal" step="0.1" value="20"></div>
     </div>
-    <label>Frecuencia de Pago</label>
+    <label>${t('frequency')}</label>
     <select id="fq" onchange="$('#dm').parentNode.style.display=this.value==='dia_mes'?'block':'none'">
       ${Object.keys(FQ).map(k => `<option value="${k}">${FQ[k]}</option>`).join("")}
     </select>
-    <div style="display:none"><label>Día específico del mes (1-31)</label><input id="dm" type="number" min="1" max="31"></div>
+    <div style="display:none"><label>${currentLang==='es'?'Día específico del mes (1-31)':'Specific day of month (1-31)'}</label><input id="dm" type="number" min="1" max="31"></div>
     <div class="g">
-      <div><label>Tasa Interés Anual %</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
-      <div><label>Fecha de Inicio</label><input id="fi" type="date" value="${today()}"></div>
+      <div><label>${t('annualInterest')}</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
+      <div><label>${t('startDate')}</label><input id="fi" type="date" value="${today()}"></div>
     </div>
-    <button onclick="saveDeb()">Guardar Préstamo</button>
+    <button onclick="saveDeb()">${t('saveLoan')}</button>
   </div>
   ${navBar()}`;
 }
@@ -388,12 +480,12 @@ async function saveDeb() {
     tasa: +$("#tx").value || 0,
     fecha_inicio: $("#fi").value || today()
   };
-  if (!d.nombre || !(d.monto > 0)) return toast("Indica nombre y monto válido");
+  if (!d.nombre || !(d.monto > 0)) return toast(currentLang==='es'?"Indica nombre y monto válido":"Provide valid name and amount");
   const r = await sb.from("deudas").insert(d);
   if (r.error) return toast(r.error.message);
   await load();
   go("list");
-  toast("Deuda creada con éxito");
+  toast(currentLang==='es'?"Deuda creada con éxito":"Loan created successfully");
 }
 
 /* ---------- Vista Detalle Préstamo ---------- */
@@ -402,81 +494,79 @@ function vDet() {
   if (!d) return go("list");
   const ab = (AB[d.id] || []).slice().reverse();
   const m = met(d, AB[d.id] || []);
-  const rem = addDays(m.next, -1);
-  rem.setHours(9, 0, 0, 0);
 
   app.innerHTML = `
   <div class="top">
-    <button class="t" onclick="go('list')">← Volver</button>
-    <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">Eliminar</button>
+    <button class="t" onclick="go('list')">${t('back')}</button>
+    <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h1 style="margin-bottom:4px">${e(d.nombre)}</h1>
-    <p class="m">${FQ[d.frecuencia]} · ${d.tasa ? d.tasa + "% anual" : "Sin intereses"}</p>
+    <p class="m">${FQ[d.frecuencia]} · ${d.tasa ? d.tasa + "% " + (currentLang==='es'?'anual':'annual') : (currentLang==='es'?'Sin intereses':'No interest')}</p>
     <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
-    <div class="m">Saldo Insoluto (de ${fm(d.monto, d.moneda)} original)</div>
+    <div class="m">${currentLang==='es'?'Saldo Insoluto (de':'Remaining balance (of'} ${fm(d.monto, d.moneda)} ${currentLang==='es'?'original)':'original)'}</div>
     ${bar(m.avance)}
-    <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+    <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
   
-  <h2>Métricas Financieras</h2>
+  <h2>${t('financialMetrics')}</h2>
   <div class="card g">
-    <div class="k"><div class="kl">Cuota Periódica</div><div class="kv">${fm(m.cuota, d.moneda)}</div></div>
-    <div class="k"><div class="kl">Compromiso s/ Ingreso</div><div class="kv o">${d.pct_ingreso}%</div></div>
-    <div class="k"><div class="kl">Liquidación Estimada</div><div class="kv" style="font-size:15px">${m.fin}</div></div>
-    <div class="k"><div class="kl">Puntualidad</div><div class="kv o">${m.punt}%</div></div>
+    <div class="k"><div class="kl">${t('periodicQuota')}</div><div class="kv">${fm(m.cuota, d.moneda)}</div></div>
+    <div class="k"><div class="kl">${t('incomeCommitment')}</div><div class="kv o">${d.pct_ingreso}%</div></div>
+    <div class="k"><div class="kl">${t('estPayoff')}</div><div class="kv" style="font-size:15px">${m.fin}</div></div>
+    <div class="k"><div class="kl">${t('punctuality')}</div><div class="kv o">${m.punt}%</div></div>
   </div>
 
-  <button onclick="wa('${d.id}')">📲 Compartir por WhatsApp</button>
+  <button onclick="wa('${d.id}')">${t('shareWhatsApp')}</button>
   
   <div class="card">
-    <h2>Registrar Abono</h2>
+    <h2>${t('registerPayment')}</h2>
     <div class="g">
-      <div><label>Fecha</label><input id="af" type="date" value="${today()}"></div>
-      <div><label>Monto (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>${t('date')}</label><input id="af" type="date" value="${today()}"></div>
+      <div><label>${currentLang==='es'?'Monto':'Amount'} (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
     </div>
-    <label>Nota / Comentario</label>
-    <input id="an" placeholder="Ej. Transferencia quincenal">
-    <label>Comprobante (Imagen)</label>
+    <label>${t('note')}</label>
+    <input id="an" placeholder="${currentLang==='es'?'Ej. Transferencia quincenal':'E.g. Biweekly transfer'}">
+    <label>${t('receipt')}</label>
     <input id="ai" type="file" accept="image/*">
-    <button id="abBtn" onclick="addAb('${d.id}')">Guardar Abono</button>
+    <button id="abBtn" onclick="addAb('${d.id}')">${t('savePayment')}</button>
   </div>
 
   <div class="card">
-    <h2>Historial de Abonos</h2>
+    <h2>${t('paymentHistory')}</h2>
     ${ab.map(a => `
     <div class="ab">
       <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)}</span></div>
       ${a.nota ? `<div class="m">${e(a.nota)}</div>` : ""}
-      ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">Ver comprobante ↗</a>` : ""}
-      <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">Quitar abono</button></div>
-    </div>`).join("") || `<p class="m">Sin abonos registrados.</p>`}
+      ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">${t('viewReceipt')}</a>` : ""}
+      <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">${t('removePayment')}</button></div>
+    </div>`).join("") || `<p class="m">${currentLang==='es'?'Sin abonos registrados.':'No payments recorded.'}</p>`}
   </div>
   ${navBar()}`;
 }
 
 async function addAb(id) {
   const monto = +$("#am").value, fecha = $("#af").value, f = $("#ai").files[0];
-  if (!(monto > 0) || !fecha) return toast("Indica fecha y monto válido");
+  if (!(monto > 0) || !fecha) return toast(currentLang==='es'?"Indica fecha y monto válido":"Provide valid date and amount");
   const btn = $("#abBtn");
   btn.disabled = true;
-  btn.textContent = "Subiendo y guardando…";
+  btn.textContent = currentLang==='es'?"Subiendo y guardando…":"Uploading and saving...";
   try {
     const url = f ? await upload(f) : null;
     const r = await sb.from("abonos").insert({ deuda_id: id, fecha, monto, nota: $("#an").value.trim() || null, comprobante_url: url });
     if (r.error) throw r.error;
     await load();
     go("det", id);
-    toast("Abono registrado con éxito");
+    toast(currentLang==='es'?"Abono registrado con éxito":"Payment registered successfully");
   } catch (x) {
     toast(x.message);
     btn.disabled = false;
-    btn.textContent = "Guardar Abono";
+    btn.textContent = t('savePayment');
   }
 }
 
 async function delAb(id) {
-  if (!confirm("¿Quitar este abono?")) return;
+  if (!confirm(currentLang==='es'?"¿Quitar este abono?":"Remove this payment?")) return;
   const r = await sb.from("abonos").delete().eq("id", id);
   if (r.error) return toast(r.error.message);
   await load();
@@ -484,7 +574,7 @@ async function delAb(id) {
 }
 
 async function delDeb(id) {
-  if (!confirm("¿Eliminar este préstamo y sus abonos?")) return;
+  if (!confirm(currentLang==='es'?"¿Eliminar este préstamo y sus abonos?":"Delete this loan and its payments?")) return;
   const r = await sb.from("deudas").delete().eq("id", id);
   if (r.error) return toast(r.error.message);
   await load();
@@ -493,46 +583,46 @@ async function delDeb(id) {
 
 function wa(id) {
   const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []), link = location.href.split("#")[0] + "#/v/" + d.share_token;
-  const msg = `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública de solo lectura:\n${link}`;
+  const msg = `💸 *My Debt* – ${d.nombre}\n💰 ${currentLang==='es'?'Prestado':'Borrowed'}: ${fm(d.monto, d.moneda)}\n✅ ${currentLang==='es'?'Abonado':'Paid'}: ${fm(m.paid, d.moneda)}\n📉 ${currentLang==='es'?'Saldo':'Balance'}: ${fm(m.saldo, d.moneda)}\n📊 ${currentLang==='es'?'Avance':'Progress'}: ${Math.round(m.avance * 100)}%\n📅 ${currentLang==='es'?'Próx pago':'Next payment'}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 ${currentLang==='es'?'Consulta pública de solo lectura':'Public read-only view'}:\n${link}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
 /* ---------- Vista Pública (Sin Login) ---------- */
-async function vShared(t) {
-  app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">Cargando detalles del préstamo…</p></div>`;
-  const r = await sb.rpc("shared_debt", { t });
+async function vShared(tkn) {
+  app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">${currentLang==='es'?'Cargando detalles del préstamo…':'Loading loan details...'}</p></div>`;
+  const r = await sb.rpc("shared_debt", { t: tkn });
   const j = r.data;
   if (r.error || !j || !j.deuda) {
-    return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>Enlace no válido</h2><p class="m">Este enlace ya no está disponible o fue eliminado.</p></div>`;
+    return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${currentLang==='es'?'Enlace no válido':'Invalid Link'}</h2><p class="m">${currentLang==='es'?'Este enlace ya no está disponible o fue eliminado.':'This link is no longer available or was deleted.'}</p></div>`;
   }
   const d = { ...j.deuda, ingreso_mensual: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
   app.innerHTML = `
   <div class="top">
     <h1>My <b>Debt</b></h1>
-    <span class="user-pill">Modo Lectura</span>
+    <span class="user-pill">${currentLang==='es'?'Modo Lectura':'Read-Only'}</span>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h2>${e(d.nombre)}</h2>
     <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
-    <div class="m">Saldo Restante (de ${fm(d.monto, d.moneda)} original)</div>
+    <div class="m">${currentLang==='es'?'Saldo Restante (de':'Remaining Balance (of'} ${fm(d.monto, d.moneda)} ${currentLang==='es'?'original)':'original)'}</div>
     ${bar(m.avance)}
-    <div class="r m"><span>${Math.round(m.avance * 100)}% liquidado</span><span>Próx: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+    <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
   <div class="card">
-    <h2>Historial de Abonos Recibidos</h2>
+    <h2>${currentLang==='es'?'Historial de Abonos Recibidos':'Received Payments History'}</h2>
     ${j.abonos.slice().reverse().map(a => `
     <div class="ab r">
       <span><b class="o">${fm(a.monto, d.moneda)}</b><span class="m"> ${e(a.nota || "")}</span></span>
       <span class="m">${fd(a.fecha)}</span>
-    </div>`).join("") || `<p class="m">Sin abonos registrados.</p>`}
+    </div>`).join("") || `<p class="m">${currentLang==='es'?'Sin abonos registrados.':'No payments recorded.'}</p>`}
   </div>`;
 }
 
-/* ---------- Arranque Blindado de la App ---------- */
-const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
-
+/* ---------- Arranque Blindado ---------- */
 (async () => {
+  const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})$/i);
+  
   if (sh && OK) {
     await vShared(sh[1]);
     hideSplash();
@@ -546,7 +636,6 @@ const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
   }
 
   try {
-    // 1. Verificamos sesión actual de forma síncrona/directa primero
     const { data: { session } } = await sb.auth.getSession();
     U = session ? session.user : null;
 
@@ -562,12 +651,11 @@ const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
     }
   } catch (err) {
     console.error("Error al arrancar:", err);
-    vAuth(); // Si falla algo, mandamos al login para que no se quede en negro
+    vAuth();
   } finally {
     hideSplash();
   }
 
-  // 2. Escuchar cambios futuros de sesión de forma segura
   sb.auth.onAuthStateChange(async (_, s) => {
     const newUser = s ? s.user : null;
     if (newUser?.id !== U?.id) {
