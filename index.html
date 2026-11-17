@@ -397,7 +397,8 @@ function vAuth() {
       
       <label>${currentLang==='es'?'Contraseña':'Password'}</label>
       <input id="pw" type="password" autocomplete="current-password">
-      
+
+      <!-- Contenedor del Widget hCaptcha -->
       <div class="h-captcha" data-sitekey="090a7e58-412c-4e52-9de6-2c0cb2bc03fe" style="margin: 15px 0; display: flex; justify-content: center;"></div>
 
       <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
@@ -415,9 +416,11 @@ async function auth(reg) {
   const email = $("#em").value.trim(), password = $("#pw").value;
   if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
 
-  // Capturar el token de hCaptcha generado en la vista
+  // OBTENER EL TOKEN DEL CAPTCHA PARA ENVIARLO A SUPABASE
   const captchaToken = window.hcaptcha ? hcaptcha.getResponse() : null;
-  const options = captchaToken ? { options: { captchaToken } } : {};
+  if (!captchaToken) return toast(currentLang==='es' ? "Por favor completa el captcha" : "Please complete the captcha");
+
+  const options = { options: { captchaToken } };
 
   const r = reg 
     ? await sb.auth.signUp({ email, password }, options) 
@@ -774,7 +777,7 @@ async function vShared(tkn) {
   const langParam = urlParams.get('lang');
   if (langParam && (langParam === 'es' || langParam === 'en')) {
     currentLang = langParam;
-    localStorage.setItem("my_debt_lang", currentLang);
+    localStorage.getItem("my_debt_lang", currentLang);
   }
 
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})/i);
