@@ -172,8 +172,11 @@ const dict = {
     noDebts: "Sin deudas registradas.",
     creditor: "Acreedor / Nombre",
     amountBorrowed: "Monto Prestado",
-    monthlyIncome: "Ingreso Mensual",
-    pctDebt: "% Destinado a Deuda",
+    incomeAmount: "Monto de Ingreso",
+    incomeFreq: "Frecuencia de Ingreso",
+    contributionType: "Tipo de Aporte",
+    contribPct: "Porcentaje de Aporte (%)",
+    contribFixed: "Monto Fijo de Aporte",
     frequency: "Frecuencia de Pago",
     annualInterest: "Tasa Interés Anual %",
     startDate: "Fecha de Inicio",
@@ -221,7 +224,12 @@ const dict = {
     signUpBtn: "Registrarme",
     noAccount: "¿No tienes cuenta? Regístrate aquí",
     hasAccount: "¿Ya tienes cuenta? Inicia sesión",
-    exportCsv: "📥 Exportar datos a CSV"
+    exportCsv: "📥 Exportar datos a CSV",
+    breakdownToggle: "📊 Ver Desglose y Analíticas",
+    generalView: "🏠 Ver Vista General",
+    totalPaid: "Total Abonado",
+    progressTitle: "Progreso General",
+    projectionTitle: "Proyección Estimada"
   },
   en: {
     totalDebt: "Total Active Debt",
@@ -236,8 +244,11 @@ const dict = {
     noDebts: "No debts recorded.",
     creditor: "Creditor / Name",
     amountBorrowed: "Amount Borrowed",
-    monthlyIncome: "Monthly Income",
-    pctDebt: "% Allocated to Debt",
+    incomeAmount: "Income Amount",
+    incomeFreq: "Income Frequency",
+    contributionType: "Contribution Type",
+    contribPct: "Contribution Percentage (%)",
+    contribFixed: "Fixed Contribution Amount",
     frequency: "Payment Frequency",
     annualInterest: "Annual Interest %",
     startDate: "Start Date",
@@ -285,7 +296,12 @@ const dict = {
     signUpBtn: "Register",
     noAccount: "Don't have an account? Register here",
     hasAccount: "Already have an account? Sign in",
-    exportCsv: "📥 Export data to CSV"
+    exportCsv: "📥 Export data to CSV",
+    breakdownToggle: "📊 View Breakdown & Analytics",
+    generalView: "🏠 View General Overview",
+    totalPaid: "Total Paid",
+    progressTitle: "General Progress",
+    projectionTitle: "Estimated Projection"
   }
 };
 
@@ -305,6 +321,12 @@ const toggleLang = () => {
 const toggleHideAmounts = () => {
   hideAmounts = !hideAmounts;
   localStorage.setItem("my_debt_hide_amounts", hideAmounts);
+  render();
+};
+
+let showBreakdown = false;
+const toggleBreakdown = () => {
+  showBreakdown = !showBreakdown;
   render();
 };
 
@@ -335,6 +357,7 @@ const getFQ = () => ({
 
 const PD = { diario: 1, semanal: 7, quincenal: 15, mensual: 30, dia_mes: 30 };
 const PM = { diario: 30, semanal: 52/12, quincenal: 2, mensual: 1, dia_mes: 1 };
+const INCOME_MULTIPLIER = { semanal: 52/12, quincenal: 2, mensual: 1 };
 
 /* ---------- Métricas Financieras ---------- */
 function nextPay(d) {
@@ -356,7 +379,15 @@ function met(d, ab) {
   const days = Math.max(0, (Date.now() - new Date(d.fecha_inicio)) / 864e5);
   const total = +d.monto + d.monto * (d.tasa / 100) * days / 365;
   const saldo = Math.max(0, total - paid);
-  const cuota = d.ingreso_mensual * d.pct_ingreso / 100 / PM[d.frecuencia];
+
+  let monthlyInc = (d.ingreso_monto || 0) * (INCOME_MULTIPLIER[d.ingreso_freq] || 1);
+  let cuota = 0;
+  if (d.tipo_aporte === 'fijo') {
+    cuota = d.aporte_fijo || 0;
+  } else {
+    cuota = monthlyInc * (d.pct_ingreso || 0) / 100 / PM[d.frecuencia];
+  }
+
   const n = cuota > 0 && saldo > 0 ? Math.ceil(saldo / cuota) : null;
   const esp = Math.floor(days / PD[d.frecuencia]);
   return {
@@ -484,7 +515,7 @@ async function register() {
 
   const r = await sb.auth.signUp({ email, password });
   if (r.error) return toast(r.error.message);
-  toast(currentLang==='es'?"¡Cuenta creada con éxito! Inicia sesión.":"Account created successfully! Please sign in.");
+  toast(currentLang==='es'?"¡Cuenta creada con éxito! Revisa tu correo o inicia sesión.":"Account created successfully! Check your email or sign in.");
   go('auth');
 }
 
@@ -495,7 +526,7 @@ function vOnboarding() {
   <div style="padding-top:30px">
     <div class="card">
       <h2>${currentLang==='es'?'Crea tu nombre de usuario':'Create your username'}</h2>
-      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @amelie123).':'Choose a unique handle for your profile (e.g. @amelie123).'}</p>
+      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @oscargl94).':'Choose a unique handle for your profile (e.g. @oscargl94).'}</p>
       <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
       <input id="un" placeholder="@tu_usuario">
       <button onclick="saveUsername()">${currentLang==='es'?'Continuar':'Continue'}</button>
@@ -593,19 +624,26 @@ function exportCSV() {
   toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
-/* ---------- Vista Principal (Dashboard) ---------- */
+/* ---------- Vista Principal (Dashboard con Opción de Desglose) ---------- */
 function vList() {
   if (!U) return go('auth');
   const by = {};
   let totalSal = 0;
+  let totalPaid = 0;
+  let totalOrig = 0;
+
   DEB.forEach(d => {
-    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0 };
+    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0, p: 0 };
     x.t += m.total;
     x.s += m.saldo;
+    x.p += m.paid;
     totalSal += m.saldo;
+    totalPaid += m.paid;
+    totalOrig += m.total;
   });
   
   const mainCurrency = Object.keys(by)[0] || "MXN";
+  const globalProgress = totalOrig ? (totalPaid / totalOrig) : 0;
 
   app.innerHTML = `
   <div class="top">
@@ -629,33 +667,67 @@ function vList() {
     <div class="m">${DEB.length} ${t('loansInCourse')}</div>
   </div>
 
-  <h2>${t('currencySummary')}</h2>
-  ${Object.keys(by).map(c => {
-    const x = by[c];
-    return `
-    <div class="card">
-      <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
-      ${bar(x.t ? 1 - x.s / x.t : 0)}
-      <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
-    </div>`;
-  }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
+  <div style="margin-bottom: 20px; text-align: center;">
+    <button class="s" onclick="toggleBreakdown()" style="width:100%; font-size:14px; background:var(--c); border:1px solid var(--l);">
+      ${showBreakdown ? t('generalView') : t('breakdownToggle')}
+    </button>
+  </div>
 
-  <h2>${t('myLoans')}</h2>
-  ${DEB.map(d => {
-    const m = met(d, AB[d.id] || []);
-    return `
-    <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
-      <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
-      ${bar(m.avance)}
-      <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
-    </div>`;
-  }).join("")}
+  ${showBreakdown ? `
+    <!-- VISTA DE DESGLOSE AVANZADO Y ANALÍTICO -->
+    <div class="card g">
+      <div class="k"><div class="kl">${t('totalDebt')}</div><div class="kv o">${fm(totalSal, mainCurrency)}</div></div>
+      <div class="k"><div class="kl">${t('totalPaid')}</div><div class="kv" style="color:#34d399">${fm(totalPaid, mainCurrency)}</div></div>
+      <div class="k"><div class="kl">${t('progressTitle')}</div><div class="kv">${Math.round(globalProgress * 100)}%</div></div>
+      <div class="k"><div class="kl">${t('loansInCourse')}</div><div class="kv">${DEB.length}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="r m" style="margin-bottom:6px"><span>${t('progressTitle')}</span><span>${Math.round(globalProgress * 100)}%</span></div>
+      ${bar(globalProgress)}
+    </div>
+
+    <h2>${t('myLoans')}</h2>
+    ${DEB.map(d => {
+      const m = met(d, AB[d.id] || []);
+      return `
+      <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
+        <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
+        ${bar(m.avance)}
+        <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+        <div class="r m" style="margin-top:8px"><span>${t('estPayoff')}:</span><span style="color:var(--w); font-weight:600;">${m.fin}</span></div>
+      </div>`;
+    }).join("")}
+  ` : `
+    <!-- VISTA GENERAL LIMPIA -->
+    <h2>${t('currencySummary')}</h2>
+    ${Object.keys(by).map(c => {
+      const x = by[c];
+      return `
+      <div class="card">
+        <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
+        ${bar(x.t ? 1 - x.s / x.t : 0)}
+        <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
+      </div>`;
+    }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
+
+    <h2>${t('myLoans')}</h2>
+    ${DEB.map(d => {
+      const m = met(d, AB[d.id] || []);
+      return `
+      <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
+        <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
+        ${bar(m.avance)}
+        <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+      </div>`;
+    }).join("")}
+  `}
   
   <button class="fab" onclick="go('new')">+ ${t('newDebtBtn')}</button>
   ${navBar()}`;
 }
 
-/* ---------- Vista Nuevo Préstamo ---------- */
+/* ---------- Vista Nuevo Préstamo (Con Frecuencia de Ingresos y Aporte Fijo/Pct) ---------- */
 function vNew() {
   if (!U) return go('auth');
   const fq = getFQ();
@@ -671,10 +743,37 @@ function vNew() {
       <div><label>${t('amountBorrowed')}</label><input id="mo" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
       <div><label>${currentLang==='es'?'Moneda':'Currency'}</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
     </div>
+
     <div class="g">
-      <div><label>${t('monthlyIncome')}</label><input id="im" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div><label>${t('pctDebt')}</label><input id="pc" type="number" inputmode="decimal" step="0.1" value="20"></div>
+      <div><label>${t('incomeAmount')}</label><input id="iam" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div>
+        <label>${t('incomeFreq')}</label>
+        <select id="ifq">
+          <option value="semanal">${currentLang==='es'?'Semanal':'Weekly'}</option>
+          <option value="quincenal">${currentLang==='es'?'Quincenal':'Biweekly'}</option>
+          <option value="mensual" selected>${currentLang==='es'?'Mensual':'Monthly'}</option>
+        </select>
+      </div>
     </div>
+
+    <div class="g">
+      <div>
+        <label>${t('contributionType')}</label>
+        <select id="tapp" onchange="document.getElementById('box-pct').style.display=this.value==='porcentaje'?'block':'none'; document.getElementById('box-fixed').style.display=this.value==='fijo'?'block':'none';">
+          <option value="porcentaje">${currentLang==='es'?'Porcentaje (%)':'Percentage (%)'}</option>
+          <option value="fijo">${currentLang==='es'?'Monto Fijo':'Fixed Amount'}</option>
+        </select>
+      </div>
+      <div>
+        <div id="box-pct">
+          <label>${t('contribPct')}</label><input id="pc" type="number" inputmode="decimal" step="0.1" value="20">
+        </div>
+        <div id="box-fixed" style="display:none">
+          <label>${t('contribFixed')}</label><input id="afix" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+    </div>
+
     <label>${t('frequency')}</label>
     <select id="fq" onchange="$('#dm').parentNode.style.display=this.value==='dia_mes'?'block':'none'">
       ${Object.keys(fq).map(k => `<option value="${k}">${fq[k]}</option>`).join("")}
@@ -691,12 +790,16 @@ function vNew() {
 
 async function saveDeb() {
   if (!U) return go('auth');
+  const tipoAporte = $("#tapp").value;
   const d = {
     nombre: $("#n").value.trim(),
     monto: +$("#mo").value,
     moneda: $("#mn").value,
-    ingreso_mensual: +$("#im").value || 0,
-    pct_ingreso: +$("#pc").value || 0,
+    ingreso_monto: +$("#iam").value || 0,
+    ingreso_freq: $("#ifq").value,
+    tipo_aporte: tipoAporte,
+    pct_ingreso: tipoAporte === 'porcentaje' ? (+$("#pc").value || 0) : 0,
+    aporte_fijo: tipoAporte === 'fijo' ? (+$("#afix").value || 0) : 0,
     frecuencia: $("#fq").value,
     dia_mes: +$("#dm").value || null,
     tasa: +$("#tx").value || 0,
@@ -736,7 +839,7 @@ function vDet() {
   <h2>${t('financialMetrics')}</h2>
   <div class="card g">
     <div class="k"><div class="kl">${t('periodicQuota')}</div><div class="kv">${fm(m.cuota, d.moneda)}</div></div>
-    <div class="k"><div class="kl">${t('incomeCommitment')}</div><div class="kv o">${d.pct_ingreso}%</div></div>
+    <div class="k"><div class="kl">${t('incomeCommitment')}</div><div class="kv o">${d.tipo_aporte === 'fijo' ? (currentLang==='es'?'Fijo':'Fixed') : d.pct_ingreso + '%'}</div></div>
     <div class="k"><div class="kl">${t('estPayoff')}</div><div class="kv" style="font-size:15px">${m.fin}</div></div>
     <div class="k"><div class="kl">${t('punctuality')}</div><div class="kv o">${m.punt}%</div></div>
   </div>
@@ -828,7 +931,7 @@ async function vShared(tkn) {
   if (r.error || !j || !j.deuda) {
     return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${t('invalidLink')}</h2><p class="m">${t('invalidLinkDesc')}</p></div>`;
   }
-  const d = { ...j.deuda, ingreso_mensual: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
+  const d = { ...j.deuda, ingreso_monto: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
   app.innerHTML = `
   <div class="top">
     <h1>My <b>Debt</b></h1>
@@ -856,11 +959,10 @@ async function vShared(tkn) {
   </div>`;
 }
 
-/* ---------- Arranque Blindado y Manejo de Auth Tokens ---------- */
+/* ---------- Arranque Blindado ---------- */
 (async () => {
   const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
   
-  // 1. Detectar si viene un enlace compartido público
   const urlParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
   const langParam = urlParams.get('lang');
   if (langParam && (langParam === 'es' || langParam === 'en')) {
@@ -869,6 +971,7 @@ async function vShared(tkn) {
   }
 
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})/i);
+  
   if (sh && OK) {
     await vShared(sh[1]);
     hideSplash();
@@ -882,16 +985,10 @@ async function vShared(tkn) {
   }
 
   try {
-    // Supabase procesa automáticamente el token de confirmación del correo si viene en el hash
-    const { data: { session }, error } = await sb.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession();
     U = session ? session.user : null;
 
     if (U) {
-      // Limpiar el hash de la URL si venía un token de confirmación para dejar la URL limpia
-      if (window.location.hash.includes('access_token')) {
-        history.replaceState(null, '', window.location.pathname);
-      }
-
       await load();
       if (!PRO.username) {
         vOnboarding();
