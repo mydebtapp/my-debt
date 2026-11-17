@@ -529,11 +529,21 @@ async function vShared(t) {
 }
 
 /* ---------- Arranque de la App ---------- */
-setTimeout(() => $("#splash").remove(), 2000);
+const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
+
 (async () => {
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})$/i);
-  if (sh && OK) return vShared(sh[1]);
-  if (!OK) return vAuth();
+  if (sh && OK) {
+    await vShared(sh[1]);
+    hideSplash();
+    return;
+  }
+  if (!OK) {
+    vAuth();
+    hideSplash();
+    return;
+  }
+  
   sb.auth.onAuthStateChange(async (_, s) => {
     U = s ? s.user : null;
     if (U) {
@@ -542,6 +552,7 @@ setTimeout(() => $("#splash").remove(), 2000);
     } else {
       go("auth");
     }
+    hideSplash();
   });
 })();
 </script>
