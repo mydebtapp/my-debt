@@ -528,7 +528,7 @@ async function vShared(t) {
   </div>`;
 }
 
-/* ---------- Arranque de la App ---------- */
+/* ---------- Arranque Blindado de la App ---------- */
 const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
 
 (async () => {
@@ -538,21 +538,47 @@ const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
     hideSplash();
     return;
   }
+  
   if (!OK) {
     vAuth();
     hideSplash();
     return;
   }
-  
-  sb.auth.onAuthStateChange(async (_, s) => {
-    U = s ? s.user : null;
+
+  try {
+    // 1. Verificamos sesión actual de forma síncrona/directa primero
+    const { data: { session } } = await sb.auth.getSession();
+    U = session ? session.user : null;
+
     if (U) {
       await load();
-      if (!PRO.username) go("onboarding"); else go("list");
+      if (!PRO.username) {
+        vOnboarding();
+      } else {
+        vList();
+      }
     } else {
-      go("auth");
+      vAuth();
     }
+  } catch (err) {
+    console.error("Error al arrancar:", err);
+    vAuth(); // Si falla algo, mandamos al login para que no se quede en negro
+  } finally {
     hideSplash();
+  }
+
+  // 2. Escuchar cambios futuros de sesión de forma segura
+  sb.auth.onAuthStateChange(async (_, s) => {
+    const newUser = s ? s.user : null;
+    if (newUser?.id !== U?.id) {
+      U = newUser;
+      if (U) {
+        await load();
+        if (!PRO.username) go("onboarding"); else go("list");
+      } else {
+        go("auth");
+      }
+    }
   });
 })();
 </script>
