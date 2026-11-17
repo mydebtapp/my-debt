@@ -397,8 +397,8 @@ function vAuth() {
       
       <label>${currentLang==='es'?'Contraseña':'Password'}</label>
       <input id="pw" type="password" autocomplete="current-password">
-
-      <div class="h-captcha" data-sitekey="" style="margin: 15px 0; display: flex; justify-content: center;"></div>
+      
+      <div class="h-captcha" data-sitekey="090a7e58-412c-4e52-9de6-2c0cb2bc03fe" style="margin: 15px 0; display: flex; justify-content: center;"></div>
 
       <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
       <button class="s" onclick="auth(1)">${currentLang==='es'?'Crear Cuenta Nueva':'Create New Account'}</button>
@@ -415,6 +415,7 @@ async function auth(reg) {
   const email = $("#em").value.trim(), password = $("#pw").value;
   if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
 
+  // Capturar el token de hCaptcha generado en la vista
   const captchaToken = window.hcaptcha ? hcaptcha.getResponse() : null;
   const options = captchaToken ? { options: { captchaToken } } : {};
 
@@ -720,7 +721,6 @@ async function delDeb(id) {
 
 function wa(id) {
   const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []);
-  // Añadimos el parámetro ?lang= al enlace compartido para que respete el idioma activo
   const baseUrl = location.href.split("#")[0];
   const link = `${baseUrl}#/v/${d.share_token}?lang=${currentLang}`;
   
@@ -770,10 +770,6 @@ async function vShared(tkn) {
 (async () => {
   const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
   
-  // Detección de enlace compartido y parámetro opcional de idioma ?lang=es|en
-  const hashMatch = location.hash.match(/^#\/v\/([0-9a-f-]{36})(?:\?lang=(es|en))?/i);
-  
-  // Revisar si viene un parámetro lang en la URL compartida
   const urlParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
   const langParam = urlParams.get('lang');
   if (langParam && (langParam === 'es' || langParam === 'en')) {
