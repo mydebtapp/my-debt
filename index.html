@@ -214,7 +214,14 @@ const dict = {
     noPayments: "Sin abonos registrados.",
     invalidLink: "Enlace no válido",
     invalidLinkDesc: "Este enlace ya no está disponible o fue eliminado.",
-    loadingDetails: "Cargando detalles del préstamo…"
+    loadingDetails: "Cargando detalles del préstamo…",
+    signInTitle: "Iniciar Sesión",
+    signUpTitle: "Crear Cuenta Nueva",
+    signInBtn: "Entrar",
+    signUpBtn: "Registrarme",
+    noAccount: "¿No tienes cuenta? Regístrate aquí",
+    hasAccount: "¿Ya tienes cuenta? Inicia sesión",
+    exportCsv: "📥 Exportar datos a CSV"
   },
   en: {
     totalDebt: "Total Active Debt",
@@ -271,7 +278,14 @@ const dict = {
     noPayments: "No payments recorded.",
     invalidLink: "Invalid Link",
     invalidLinkDesc: "This link is no longer available or was deleted.",
-    loadingDetails: "Loading loan details..."
+    loadingDetails: "Loading loan details...",
+    signInTitle: "Sign In",
+    signUpTitle: "Create New Account",
+    signInBtn: "Sign In",
+    signUpBtn: "Register",
+    noAccount: "Don't have an account? Register here",
+    hasAccount: "Already have an account? Sign in",
+    exportCsv: "📥 Export data to CSV"
   }
 };
 
@@ -281,8 +295,7 @@ const t = k => (dict[currentLang] && dict[currentLang][k]) || k;
 const toggleLang = () => {
   currentLang = currentLang === "es" ? "en" : "es";
   localStorage.setItem("my_debt_lang", currentLang);
-  // Re-validación estricta de seguridad antes de pintar al cambiar idioma
-  if (!U && V.n !== 'auth') {
+  if (!U && V.n !== 'auth' && V.n !== 'signup') {
     go('auth');
   } else {
     render();
@@ -376,8 +389,7 @@ async function upload(f) {
 
 /* ---------- Navegación y Vistas con Blindaje de Seguridad ---------- */
 const go = (n, id) => {
-  // BLOQUEO ABSOLUTO: Si no hay usuario autenticado y no es la ruta pública, forzar login
-  if (!U && n !== 'auth') {
+  if (!U && n !== 'auth' && n !== 'signup') {
     V = { n: "auth" };
   } else {
     V = { n, id };
@@ -387,12 +399,11 @@ const go = (n, id) => {
 };
 
 function render() {
-  // Doble validación de seguridad antes de renderizar vistas protegidas
-  if (!U && V.n !== 'auth') {
+  if (!U && V.n !== 'auth' && V.n !== 'signup') {
     vAuth();
     return;
   }
-  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet, profile: vProfile }[V.n] || vAuth)();
+  ({ auth: vAuth, signup: vSignup, onboarding: vOnboarding, list: vList, new: vNew, det: vDet, profile: vProfile }[V.n] || vAuth)();
 }
 
 const navBar = () => U && PRO.username ? `
@@ -403,7 +414,7 @@ const navBar = () => U && PRO.username ? `
   <button class="nav-btn" onclick="sb.auth.signOut()">${t('navSignOut')}</button>
 </nav>` : "";
 
-/* ---------- Vista Autenticación ---------- */
+/* ---------- Vista Autenticación (Login) ---------- */
 function vAuth() {
   app.innerHTML = `
   <div style="padding-top:40px">
@@ -412,33 +423,69 @@ function vAuth() {
       <h1>My <b class="o">Debt</b></h1>
       <p class="m" style="margin-top:6px;margin-bottom:20px">${currentLang==='es'?'Control financiero inteligente':'Smart financial control'}</p>
       
-      <label>${currentLang==='es'?'Correo electrónico':'Email'}</label>
+      <label>${t('emailLabel')}</label>
       <input id="em" type="email" autocomplete="email">
       
-      <label>${currentLang==='es'?'Contraseña':'Password'}</label>
+      <label>${t('passLabel')}</label>
       <input id="pw" type="password" autocomplete="current-password">
 
-      <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
-      <button class="s" onclick="auth(1)">${currentLang==='es'?'Crear Cuenta Nueva':'Create New Account'}</button>
+      <button onclick="login()">${t('signInBtn')}</button>
       
       <div style="margin-top:20px">
+        <button class="t" onclick="go('signup')" style="font-size:14px; color:var(--o); font-weight:600;">${t('noAccount')}</button>
+      </div>
+      <div style="margin-top:14px">
         <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
       </div>
     </div>
   </div>`;
 }
 
-async function auth(reg) {
+async function login() {
   if (!OK) return toast("Configura Supabase");
   const email = $("#em").value.trim(), password = $("#pw").value;
   if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
 
-  const r = reg 
-    ? await sb.auth.signUp({ email, password }) 
-    : await sb.auth.signInWithPassword({ email, password });
-
+  const r = await sb.auth.signInWithPassword({ email, password });
   if (r.error) return toast(r.error.message);
-  if (reg && !r.data.session) return toast(currentLang==='es'?"Revisa tu correo para confirmar cuenta":"Check your email to confirm account");
+}
+
+/* ---------- Vista Registro (Sign Up) ---------- */
+function vSignup() {
+  app.innerHTML = `
+  <div style="padding-top:40px">
+    <div class="card" style="text-align:center;padding:30px">
+      <img src="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg" style="width:70px;height:70px;border-radius:16px;margin-bottom:15px">
+      <h1>${t('signUpTitle')}</h1>
+      <p class="m" style="margin-top:6px;margin-bottom:20px">${currentLang==='es'?'Crea tu cuenta segura en la nube':'Create your secure cloud account'}</p>
+      
+      <label>${t('emailLabel')}</label>
+      <input id="sem" type="email" autocomplete="email">
+      
+      <label>${t('newPassLabel')}</label>
+      <input id="spw" type="password" autocomplete="new-password">
+
+      <button onclick="register()">${t('signUpBtn')}</button>
+      
+      <div style="margin-top:20px">
+        <button class="t" onclick="go('auth')" style="font-size:14px; color:var(--o); font-weight:600;">${t('hasAccount')}</button>
+      </div>
+      <div style="margin-top:14px">
+        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function register() {
+  if (!OK) return toast("Configura Supabase");
+  const email = $("#sem").value.trim(), password = $("#spw").value;
+  if (!email || !password || password.length < 6) return toast(currentLang==='es'?"Correo válido y contraseña de mín. 6 caracteres":"Valid email and password (min 6 chars)");
+
+  const r = await sb.auth.signUp({ email, password });
+  if (r.error) return toast(r.error.message);
+  toast(currentLang==='es'?"¡Cuenta creada con éxito! Inicia sesión.":"Account created successfully! Please sign in.");
+  go('auth');
 }
 
 /* ---------- Onboarding Username ---------- */
@@ -497,6 +544,10 @@ function vProfile() {
     <input id="newPw" type="password" placeholder="••••••••">
     <button onclick="updatePassword()">${t('updatePassBtn')}</button>
   </div>
+
+  <div class="card" style="text-align:center;">
+    <button class="s" onclick="exportCSV()">${t('exportCsv')}</button>
+  </div>
   
   ${navBar()}`;
 }
@@ -507,7 +558,7 @@ function toggleShowPass() {
   const input = $("#maskPw");
   const btn = $("#pwToggleBtn");
   if (passRevealed) {
-    input.value = localStorage.getItem("my_debt_last_pw") || "(Contraseña activa en sesión)";
+    input.value = localStorage.getItem("my_debt_last_pw") || "(Contraseña activa)";
     btn.textContent = t('hidePass');
   } else {
     input.value = "••••••••••••";
@@ -524,6 +575,22 @@ async function updatePassword() {
   localStorage.setItem("my_debt_last_pw", np);
   toast(t('passUpdated'));
   $("#newPw").value = "";
+}
+
+/* ---------- Exportar a CSV ---------- */
+function exportCSV() {
+  if (!DEB.length) return toast(currentLang==='es'?"No hay deudas para exportar":"No debts to export");
+  let csv = "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n";
+  DEB.forEach(d => {
+    csv += `"${d.nombre}",${d.monto},${d.moneda},${d.tasa},${d.frecuencia},${d.fecha_inicio}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `my_debt_backup_${iso(new Date())}.csv`;
+  a.click();
+  toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
 /* ---------- Vista Principal (Dashboard) ---------- */
