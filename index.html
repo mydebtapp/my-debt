@@ -33,11 +33,11 @@
   h1 b, .o { color: var(--o); }
   h2 { font-size: 15px; margin: 0 0 12px; color: var(--m); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   
-  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
   .user-pill {
     display: flex; align-items: center; gap: 10px;
     background: var(--c); border: 1px solid var(--l);
-    padding: 6px 14px; border-radius: 30px; font-weight: 600; font-size: 14px;
+    padding: 6px 14px; border-radius: 30px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; color: var(--w);
   }
   .user-avatar {
     width: 28px; height: 28px; border-radius: 50%; background: var(--o);
@@ -49,6 +49,7 @@
     background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
     border: 1px solid var(--l); border-radius: var(--card-radius);
     box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+    position: relative;
   }
   .balance-title { font-size: 13px; color: var(--m); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
   .balance-amount { font-size: 42px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
@@ -104,9 +105,9 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .nav-btn {
-    background: none; border: 0; color: var(--m); font-size: 12px; font-weight: 600;
+    background: none; border: 0; color: var(--m); font-size: 13px; font-weight: 600;
     display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
-    min-height: auto; margin: 0; box-shadow: none; width: auto; padding: 6px 12px; border-radius: 12px;
+    min-height: auto; margin: 0; box-shadow: none; width: auto; padding: 6px 16px; border-radius: 12px;
   }
   .nav-btn.active { color: var(--o); background: rgba(249,115,22,0.1); }
   
@@ -154,6 +155,8 @@ const OK = !SUPABASE_URL.includes("TU-PROYECTO");
 const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "list" };
+let hideAmounts = localStorage.getItem("my_debt_privacy") === "true";
+
 const $ = s => document.querySelector(s), app = $("#app");
 
 /* ---------- Sistema de Idiomas (i18n) ---------- */
@@ -164,33 +167,47 @@ const dict = {
     currencySummary: "Resumen por Moneda",
     myLoans: "Mis Préstamos",
     newDebtBtn: "+ Nueva Deuda",
-    back: "← Volver",
+    back: "Volver",
     saveLoan: "Guardar Préstamo",
     paidOff: "liquidado",
-    next: "Próx",
+    next: "Prox",
     noDebts: "Sin deudas registradas.",
     creditor: "Acreedor / Nombre",
     amountBorrowed: "Monto Prestado",
     monthlyIncome: "Ingreso Mensual",
     pctDebt: "% Destinado a Deuda",
     frequency: "Frecuencia de Pago",
-    annualInterest: "Tasa Interés Anual %",
+    annualInterest: "Tasa Interes Anual %",
     startDate: "Fecha de Inicio",
-    financialMetrics: "Métricas Financieras",
-    periodicQuota: "Cuota Periódica",
+    financialMetrics: "Metricas Financieras",
+    periodicQuota: "Cuota Periodica",
     incomeCommitment: "Compromiso s/ Ingreso",
-    estPayoff: "Liquidación Estimada",
+    estPayoff: "Liquidacion Estimada",
     punctuality: "Puntualidad",
-    shareWhatsApp: "📲 Compartir por WhatsApp",
+    shareWhatsApp: "Compartir por WhatsApp",
     registerPayment: "Registrar Abono",
     date: "Fecha",
     note: "Nota / Comentario",
     receipt: "Comprobante (Imagen)",
     savePayment: "Guardar Abono",
     paymentHistory: "Historial de Abonos",
-    viewReceipt: "Ver comprobante ↗",
+    viewReceipt: "Ver comprobante",
     removePayment: "Quitar abono",
-    deleteLoan: "Eliminar"
+    deleteLoan: "Eliminar",
+    profileTitle: "Perfil de Usuario",
+    emailLabel: "Correo Electronico",
+    passLabel: "Contrasena Registrada",
+    showPass: "Mostrar",
+    hidePass: "Ocultar",
+    changePassTitle: "Cambiar Contrasena",
+    newPassLabel: "Nueva Contrasena",
+    updatePassBtn: "Actualizar Contrasena",
+    passUpdated: "Contrasena actualizada con exito",
+    privacyHide: "Ocultar saldos",
+    privacyShow: "Mostrar saldos",
+    home: "Inicio",
+    new: "Nuevo",
+    signOut: "Salir"
   },
   en: {
     totalDebt: "Total Active Debt",
@@ -198,7 +215,7 @@ const dict = {
     currencySummary: "Summary by Currency",
     myLoans: "My Loans",
     newDebtBtn: "+ New Debt",
-    back: "← Back",
+    back: "Back",
     saveLoan: "Save Loan",
     paidOff: "paid off",
     next: "Next",
@@ -215,16 +232,30 @@ const dict = {
     incomeCommitment: "Income Commitment",
     estPayoff: "Estimated Payoff",
     punctuality: "Punctuality",
-    shareWhatsApp: "📲 Share via WhatsApp",
+    shareWhatsApp: "Share via WhatsApp",
     registerPayment: "Register Payment",
     date: "Date",
     note: "Note / Comment",
     receipt: "Receipt (Image)",
     savePayment: "Save Payment",
     paymentHistory: "Payment History",
-    viewReceipt: "View receipt ↗",
+    viewReceipt: "View receipt",
     removePayment: "Remove payment",
-    deleteLoan: "Delete"
+    deleteLoan: "Delete",
+    profileTitle: "User Profile",
+    emailLabel: "Email Address",
+    passLabel: "Registered Password",
+    showPass: "Show",
+    hidePass: "Hide",
+    changePassTitle: "Change Password",
+    newPassLabel: "New Password",
+    updatePassBtn: "Update Password",
+    passUpdated: "Password updated successfully",
+    privacyHide: "Hide balances",
+    privacyShow: "Show balances",
+    home: "Home",
+    new: "New",
+    signOut: "Sign Out"
   }
 };
 
@@ -236,9 +267,15 @@ const toggleLang = () => {
   render();
 };
 
+const togglePrivacy = () => {
+  hideAmounts = !hideAmounts;
+  localStorage.setItem("my_debt_privacy", hideAmounts);
+  render();
+};
+
 /* ---------- Utilidades ---------- */
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fm = (n, c) => new Intl.NumberFormat(currentLang === 'es' ? "es-MX" : "en-US", { style: "currency", currency: c }).format(n || 0);
+const fm = (n, c) => hideAmounts ? "••••••••••••" : new Intl.NumberFormat(currentLang === 'es' ? "es-MX" : "en-US", { style: "currency", currency: c }).format(n || 0);
 const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const today = () => iso(new Date()), fd = d => new Date(d).toLocaleDateString(currentLang === 'es' ? "es-MX" : "en-US", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
@@ -253,13 +290,14 @@ const toast = m => {
   tt = setTimeout(() => tbox.classList.remove("on"), 3000);
 };
 
-const FQ = { 
+const getFQ = () => ({
   diario: currentLang === 'es' ? "Diario" : "Daily", 
   semanal: currentLang === 'es' ? "Semanal" : "Weekly", 
   quincenal: currentLang === 'es' ? "Quincenal" : "Biweekly", 
   mensual: currentLang === 'es' ? "Mensual" : "Monthly", 
-  dia_mes: currentLang === 'es' ? "Día específico del mes" : "Specific day of month" 
-};
+  dia_mes: currentLang === 'es' ? "Día específico del mes" : "Specific day of month"
+});
+
 const PD = { diario: 1, semanal: 7, quincenal: 15, mensual: 30, dia_mes: 30 };
 const PM = { diario: 30, semanal: 52/12, quincenal: 2, mensual: 1, dia_mes: 1 };
 
@@ -316,14 +354,14 @@ async function upload(f) {
 /* ---------- Navegación y Vistas ---------- */
 const go = (n, id) => { V = { n, id }; render(); window.scrollTo(0, 0); };
 function render() {
-  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet }[V.n] || vList)();
+  ({ auth: vAuth, onboarding: vOnboarding, list: vList, new: vNew, det: vDet, profile: vProfile }[V.n] || vList)();
 }
 
 const navBar = () => U && PRO.username ? `
 <nav class="nav-bar">
-  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">🏠 ${currentLang==='es'?'Inicio':'Home'}</button>
-  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">➕ ${currentLang==='es'?'Nuevo':'New'}</button>
-  <button class="nav-btn" onclick="sb.auth.signOut()">🚪 ${currentLang==='es'?'Salir':'Sign Out'}</button>
+  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">${t('home')}</button>
+  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">${t('new')}</button>
+  <button class="nav-btn" onclick="sb.auth.signOut()">${t('signOut')}</button>
 </nav>` : "";
 
 /* ---------- Vista Autenticación ---------- */
@@ -380,6 +418,63 @@ async function saveUsername() {
   go("list");
 }
 
+/* ---------- Vista Perfil de Usuario ---------- */
+function vProfile() {
+  app.innerHTML = `
+  <div class="top">
+    <button class="t" onclick="go('list')">← ${t('back')}</button>
+    <h1>${t('profileTitle')}</h1>
+  </div>
+  
+  <div class="card">
+    <h2>${currentLang==='es'?'Información de la Cuenta':'Account Information'}</h2>
+    <label>${t('emailLabel')}</label>
+    <input type="text" value="${e(U.email)}" disabled style="color:var(--m);">
+    
+    <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
+    <input type="text" value="${e(PRO.username || '')}" disabled style="color:var(--m);">
+
+    <label>${t('passLabel')}</label>
+    <div style="position:relative">
+      <input id="maskPw" type="password" value="••••••••••••" disabled style="color:var(--m);">
+      <button class="t" onclick="toggleShowPass()" id="pwToggleBtn" style="position:absolute; right:14px; top:12px; color:var(--o); font-size:13px; font-weight:600;">${t('showPass')}</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>${t('changePassTitle')}</h2>
+    <label>${t('newPassLabel')}</label>
+    <input id="newPw" type="password" placeholder="••••••••">
+    <button onclick="updatePassword()">${t('updatePassBtn')}</button>
+  </div>
+  
+  ${navBar()}`;
+}
+
+let passRevealed = false;
+function toggleShowPass() {
+  passRevealed = !passRevealed;
+  const input = $("#maskPw");
+  const btn = $("#pwToggleBtn");
+  if (passRevealed) {
+    input.value = localStorage.getItem("my_debt_last_pw") || "(Contraseña activa en sesión)";
+    btn.textContent = t('hidePass');
+  } else {
+    input.value = "••••••••••••";
+    btn.textContent = t('showPass');
+  }
+}
+
+async function updatePassword() {
+  const np = $("#newPw").value;
+  if (!np || np.length < 6) return toast(currentLang==='es'?"La contraseña debe tener al menos 6 caracteres":"Password must be at least 6 chars");
+  const { error } = await sb.auth.updateUser({ password: np });
+  if (error) return toast(error.message);
+  localStorage.setItem("my_debt_last_pw", np);
+  toast(t('passUpdated'));
+  $("#newPw").value = "";
+}
+
 /* ---------- Vista Principal (Dashboard) ---------- */
 function vList() {
   const by = {};
@@ -395,13 +490,18 @@ function vList() {
 
   app.innerHTML = `
   <div class="top">
-    <div class="user-pill">
+    <div class="user-pill" onclick="go('profile')" title="Ver Perfil">
       <div class="user-avatar">${PRO.username ? PRO.username[1].toUpperCase() : "U"}</div>
       <span>${e(PRO.username || "@usuario")}</span>
     </div>
-    <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 14px; border-radius:20px; font-size:12px;">
-      🌐 ${currentLang === 'es' ? '🇬🇧 English' : '🇪🇸 Español'}
-    </button>
+    <div style="display:flex; gap:8px;">
+      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
+      </button>
+      <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
+      </button>
+    </div>
   </div>
   
   <div class="balance-card">
@@ -438,12 +538,18 @@ function vList() {
 
 /* ---------- Vista Nuevo Préstamo ---------- */
 function vNew() {
+  const fq = getFQ();
   app.innerHTML = `
   <div class="top">
-    <button class="t" onclick="go('list')">${t('back')}</button>
-    <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
+    <button class="t" onclick="go('list')">← ${t('back')}</button>
+    <div style="display:flex; gap:8px;">
+      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
+      </button>
+    </div>
   </div>
-  <div class="card">
+  <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
+  <div class="card" style="margin-top:15px">
     <label>${t('creditor')}</label>
     <input id="n" placeholder="${currentLang==='es'?'Ej. Préstamo Mamá':'E.g. Mom Loan'}">
     <div class="g">
@@ -456,7 +562,7 @@ function vNew() {
     </div>
     <label>${t('frequency')}</label>
     <select id="fq" onchange="$('#dm').parentNode.style.display=this.value==='dia_mes'?'block':'none'">
-      ${Object.keys(FQ).map(k => `<option value="${k}">${FQ[k]}</option>`).join("")}
+      ${Object.keys(fq).map(k => `<option value="${k}">${fq[k]}</option>`).join("")}
     </select>
     <div style="display:none"><label>${currentLang==='es'?'Día específico del mes (1-31)':'Specific day of month (1-31)'}</label><input id="dm" type="number" min="1" max="31"></div>
     <div class="g">
@@ -494,15 +600,21 @@ function vDet() {
   if (!d) return go("list");
   const ab = (AB[d.id] || []).slice().reverse();
   const m = met(d, AB[d.id] || []);
+  const fq = getFQ();
 
   app.innerHTML = `
   <div class="top">
-    <button class="t" onclick="go('list')">${t('back')}</button>
-    <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
+    <button class="t" onclick="go('list')">← ${t('back')}</button>
+    <div style="display:flex; gap:8px;">
+      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
+      </button>
+      <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
+    </div>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h1 style="margin-bottom:4px">${e(d.nombre)}</h1>
-    <p class="m">${FQ[d.frecuencia]} · ${d.tasa ? d.tasa + "% " + (currentLang==='es'?'anual':'annual') : (currentLang==='es'?'Sin intereses':'No interest')}</p>
+    <p class="m">${fq[d.frecuencia]} · ${d.tasa ? d.tasa + "% " + (currentLang==='es'?'anual':'annual') : (currentLang==='es'?'Sin intereses':'No interest')}</p>
     <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
     <div class="m">${currentLang==='es'?'Saldo Insoluto (de':'Remaining balance (of'} ${fm(d.monto, d.moneda)} ${currentLang==='es'?'original)':'original)'}</div>
     ${bar(m.avance)}
@@ -538,7 +650,7 @@ function vDet() {
     <div class="ab">
       <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)}</span></div>
       ${a.nota ? `<div class="m">${e(a.nota)}</div>` : ""}
-      ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">${t('viewReceipt')}</a>` : ""}
+      ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">${t('viewReceipt')} ↗</a>` : ""}
       <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">${t('removePayment')}</button></div>
     </div>`).join("") || `<p class="m">${currentLang==='es'?'Sin abonos registrados.':'No payments recorded.'}</p>`}
   </div>
@@ -583,7 +695,9 @@ async function delDeb(id) {
 
 function wa(id) {
   const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []), link = location.href.split("#")[0] + "#/v/" + d.share_token;
-  const msg = `💸 *My Debt* – ${d.nombre}\n💰 ${currentLang==='es'?'Prestado':'Borrowed'}: ${fm(d.monto, d.moneda)}\n✅ ${currentLang==='es'?'Abonado':'Paid'}: ${fm(m.paid, d.moneda)}\n📉 ${currentLang==='es'?'Saldo':'Balance'}: ${fm(m.saldo, d.moneda)}\n📊 ${currentLang==='es'?'Avance':'Progress'}: ${Math.round(m.avance * 100)}%\n📅 ${currentLang==='es'?'Próx pago':'Next payment'}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 ${currentLang==='es'?'Consulta pública de solo lectura':'Public read-only view'}:\n${link}`;
+  const msg = currentLang === 'es' 
+    ? `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública de solo lectura:\n${link}`
+    : `💸 *My Debt* – ${d.nombre}\n💰 Borrowed: ${fm(d.monto, d.moneda)}\n✅ Paid: ${fm(m.paid, d.moneda)}\n📉 Balance: ${fm(m.saldo, d.moneda)}\n📊 Progress: ${Math.round(m.avance * 100)}%\n📅 Next payment: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Public read-only link:\n${link}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
