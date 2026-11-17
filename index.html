@@ -2,11 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0f19">
 <meta name="mobile-web-app-capable" content="yes">
 <title>My Debt</title>
 <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg">
+<!-- Script oficial de hCaptcha -->
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -33,7 +35,7 @@
   h1 b, .o { color: var(--o); }
   h2 { font-size: 15px; margin: 0 0 12px; color: var(--m); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   
-  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
   .user-pill {
     display: flex; align-items: center; gap: 10px;
     background: var(--c); border: 1px solid var(--l);
@@ -49,7 +51,6 @@
     background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
     border: 1px solid var(--l); border-radius: var(--card-radius);
     box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-    position: relative;
   }
   .balance-title { font-size: 13px; color: var(--m); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
   .balance-amount { font-size: 42px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
@@ -105,9 +106,9 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .nav-btn {
-    background: none; border: 0; color: var(--m); font-size: 13px; font-weight: 600;
+    background: none; border: 0; color: var(--m); font-size: 12px; font-weight: 600;
     display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
-    min-height: auto; margin: 0; box-shadow: none; width: auto; padding: 6px 16px; border-radius: 12px;
+    min-height: auto; margin: 0; box-shadow: none; width: auto; padding: 6px 12px; border-radius: 12px;
   }
   .nav-btn.active { color: var(--o); background: rgba(249,115,22,0.1); }
   
@@ -155,8 +156,7 @@ const OK = !SUPABASE_URL.includes("TU-PROYECTO");
 const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "list" };
-let hideAmounts = localStorage.getItem("my_debt_privacy") === "true";
-
+let hideAmounts = localStorage.getItem("my_debt_hide_amounts") === "true";
 const $ = s => document.querySelector(s), app = $("#app");
 
 /* ---------- Sistema de Idiomas (i18n) ---------- */
@@ -166,23 +166,23 @@ const dict = {
     loansInCourse: "préstamos en curso",
     currencySummary: "Resumen por Moneda",
     myLoans: "Mis Préstamos",
-    newDebtBtn: "+ Nueva Deuda",
+    newDebtBtn: "Nueva Deuda",
     back: "Volver",
     saveLoan: "Guardar Préstamo",
     paidOff: "liquidado",
-    next: "Prox",
+    next: "Próx",
     noDebts: "Sin deudas registradas.",
     creditor: "Acreedor / Nombre",
     amountBorrowed: "Monto Prestado",
     monthlyIncome: "Ingreso Mensual",
     pctDebt: "% Destinado a Deuda",
     frequency: "Frecuencia de Pago",
-    annualInterest: "Tasa Interes Anual %",
+    annualInterest: "Tasa Interés Anual %",
     startDate: "Fecha de Inicio",
-    financialMetrics: "Metricas Financieras",
-    periodicQuota: "Cuota Periodica",
+    financialMetrics: "Métricas Financieras",
+    periodicQuota: "Cuota Periódica",
     incomeCommitment: "Compromiso s/ Ingreso",
-    estPayoff: "Liquidacion Estimada",
+    estPayoff: "Liquidación Estimada",
     punctuality: "Puntualidad",
     shareWhatsApp: "Compartir por WhatsApp",
     registerPayment: "Registrar Abono",
@@ -195,26 +195,35 @@ const dict = {
     removePayment: "Quitar abono",
     deleteLoan: "Eliminar",
     profileTitle: "Perfil de Usuario",
-    emailLabel: "Correo Electronico",
-    passLabel: "Contrasena Registrada",
-    showPass: "Mostrar",
-    hidePass: "Ocultar",
-    changePassTitle: "Cambiar Contrasena",
-    newPassLabel: "Nueva Contrasena",
-    updatePassBtn: "Actualizar Contrasena",
-    passUpdated: "Contrasena actualizada con exito",
-    privacyHide: "Ocultar saldos",
-    privacyShow: "Mostrar saldos",
-    home: "Inicio",
-    new: "Nuevo",
-    signOut: "Salir"
+    emailLabel: "Correo Electrónico",
+    passLabel: "Contraseña Registrada",
+    showPass: "Mostrar contraseña",
+    hidePass: "Ocultar contraseña",
+    changePassTitle: "Cambiar Contraseña",
+    newPassLabel: "Nueva Contraseña",
+    updatePassBtn: "Actualizar Contraseña",
+    passUpdated: "Contraseña actualizada con éxito",
+    hideBalances: "Ocultar saldos",
+    showBalances: "Mostrar saldos",
+    navHome: "Inicio",
+    navNew: "Nuevo",
+    navProfile: "Perfil",
+    navSignOut: "Salir",
+    readOnly: "Modo Lectura",
+    remainingBalance: "Saldo Restante (de",
+    originalSuffix: "original)",
+    paymentHistoryTitle: "Historial de Abonos Recibidos",
+    noPayments: "Sin abonos registrados.",
+    invalidLink: "Enlace no válido",
+    invalidLinkDesc: "Este enlace ya no está disponible o fue eliminado.",
+    loadingDetails: "Cargando detalles del préstamo…"
   },
   en: {
     totalDebt: "Total Active Debt",
     loansInCourse: "loans in progress",
     currencySummary: "Summary by Currency",
     myLoans: "My Loans",
-    newDebtBtn: "+ New Debt",
+    newDebtBtn: "New Debt",
     back: "Back",
     saveLoan: "Save Loan",
     paidOff: "paid off",
@@ -245,17 +254,26 @@ const dict = {
     profileTitle: "User Profile",
     emailLabel: "Email Address",
     passLabel: "Registered Password",
-    showPass: "Show",
-    hidePass: "Hide",
+    showPass: "Show password",
+    hidePass: "Hide password",
     changePassTitle: "Change Password",
     newPassLabel: "New Password",
     updatePassBtn: "Update Password",
     passUpdated: "Password updated successfully",
-    privacyHide: "Hide balances",
-    privacyShow: "Show balances",
-    home: "Home",
-    new: "New",
-    signOut: "Sign Out"
+    hideBalances: "Hide balances",
+    showBalances: "Show balances",
+    navHome: "Home",
+    navNew: "New",
+    navProfile: "Profile",
+    navSignOut: "Sign Out",
+    readOnly: "Read-Only",
+    remainingBalance: "Remaining Balance (of",
+    originalSuffix: "original)",
+    paymentHistoryTitle: "Received Payments History",
+    noPayments: "No payments recorded.",
+    invalidLink: "Invalid Link",
+    invalidLinkDesc: "This link is no longer available or was deleted.",
+    loadingDetails: "Loading loan details..."
   }
 };
 
@@ -267,9 +285,9 @@ const toggleLang = () => {
   render();
 };
 
-const togglePrivacy = () => {
+const toggleHideAmounts = () => {
   hideAmounts = !hideAmounts;
-  localStorage.setItem("my_debt_privacy", hideAmounts);
+  localStorage.setItem("my_debt_hide_amounts", hideAmounts);
   render();
 };
 
@@ -359,9 +377,10 @@ function render() {
 
 const navBar = () => U && PRO.username ? `
 <nav class="nav-bar">
-  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">${t('home')}</button>
-  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">${t('new')}</button>
-  <button class="nav-btn" onclick="sb.auth.signOut()">${t('signOut')}</button>
+  <button class="nav-btn ${V.n==='list'?'active':''}" onclick="go('list')">${t('navHome')}</button>
+  <button class="nav-btn ${V.n==='new'?'active':''}" onclick="go('new')">${t('navNew')}</button>
+  <button class="nav-btn ${V.n==='profile'?'active':''}" onclick="go('profile')">${t('navProfile')}</button>
+  <button class="nav-btn" onclick="sb.auth.signOut()">${t('navSignOut')}</button>
 </nav>` : "";
 
 /* ---------- Vista Autenticación ---------- */
@@ -372,12 +391,18 @@ function vAuth() {
       <img src="https://i.postimg.cc/mDNYrsCn/My-Debt-Logo-V2.jpg" style="width:70px;height:70px;border-radius:16px;margin-bottom:15px">
       <h1>My <b class="o">Debt</b></h1>
       <p class="m" style="margin-top:6px;margin-bottom:20px">${currentLang==='es'?'Control financiero inteligente':'Smart financial control'}</p>
+      
       <label>${currentLang==='es'?'Correo electrónico':'Email'}</label>
       <input id="em" type="email" autocomplete="email">
+      
       <label>${currentLang==='es'?'Contraseña':'Password'}</label>
       <input id="pw" type="password" autocomplete="current-password">
+
+      <div class="h-captcha" data-sitekey="" style="margin: 15px 0; display: flex; justify-content: center;"></div>
+
       <button onclick="auth(0)">${currentLang==='es'?'Iniciar Sesión':'Sign In'}</button>
       <button class="s" onclick="auth(1)">${currentLang==='es'?'Crear Cuenta Nueva':'Create New Account'}</button>
+      
       <div style="margin-top:20px">
         <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
       </div>
@@ -389,8 +414,18 @@ async function auth(reg) {
   if (!OK) return toast("Configura Supabase");
   const email = $("#em").value.trim(), password = $("#pw").value;
   if (!email || !password) return toast(currentLang==='es'?"Completa los campos":"Complete fields");
-  const r = reg ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
-  if (r.error) return toast(r.error.message);
+
+  const captchaToken = window.hcaptcha ? hcaptcha.getResponse() : null;
+  const options = captchaToken ? { options: { captchaToken } } : {};
+
+  const r = reg 
+    ? await sb.auth.signUp({ email, password }, options) 
+    : await sb.auth.signInWithPassword({ email, password }, options);
+
+  if (r.error) {
+    if (window.hcaptcha) hcaptcha.reset();
+    return toast(r.error.message);
+  }
   if (reg && !r.data.session) return toast(currentLang==='es'?"Revisa tu correo para confirmar cuenta":"Check your email to confirm account");
 }
 
@@ -494,9 +529,9 @@ function vList() {
       <div class="user-avatar">${PRO.username ? PRO.username[1].toUpperCase() : "U"}</div>
       <span>${e(PRO.username || "@usuario")}</span>
     </div>
-    <div style="display:flex; gap:8px;">
-      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
-        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button class="t" onclick="toggleHideAmounts()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        ${hideAmounts ? t('showBalances') : t('hideBalances')}
       </button>
       <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
         🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
@@ -532,7 +567,7 @@ function vList() {
     </div>`;
   }).join("")}
   
-  <button class="fab" onclick="go('new')">${t('newDebtBtn')}</button>
+  <button class="fab" onclick="go('new')">+ ${t('newDebtBtn')}</button>
   ${navBar()}`;
 }
 
@@ -542,14 +577,9 @@ function vNew() {
   app.innerHTML = `
   <div class="top">
     <button class="t" onclick="go('list')">← ${t('back')}</button>
-    <div style="display:flex; gap:8px;">
-      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
-        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
-      </button>
-    </div>
+    <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
   </div>
-  <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
-  <div class="card" style="margin-top:15px">
+  <div class="card">
     <label>${t('creditor')}</label>
     <input id="n" placeholder="${currentLang==='es'?'Ej. Préstamo Mamá':'E.g. Mom Loan'}">
     <div class="g">
@@ -605,12 +635,7 @@ function vDet() {
   app.innerHTML = `
   <div class="top">
     <button class="t" onclick="go('list')">← ${t('back')}</button>
-    <div style="display:flex; gap:8px;">
-      <button class="t" onclick="togglePrivacy()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
-        ${hideAmounts ? t('privacyShow') : t('privacyHide')}
-      </button>
-      <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
-    </div>
+    <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h1 style="margin-bottom:4px">${e(d.nombre)}</h1>
@@ -694,48 +719,69 @@ async function delDeb(id) {
 }
 
 function wa(id) {
-  const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []), link = location.href.split("#")[0] + "#/v/" + d.share_token;
+  const d = DEB.find(x => x.id === id), m = met(d, AB[id] || []);
+  // Añadimos el parámetro ?lang= al enlace compartido para que respete el idioma activo
+  const baseUrl = location.href.split("#")[0];
+  const link = `${baseUrl}#/v/${d.share_token}?lang=${currentLang}`;
+  
   const msg = currentLang === 'es' 
     ? `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública de solo lectura:\n${link}`
-    : `💸 *My Debt* – ${d.nombre}\n💰 Borrowed: ${fm(d.monto, d.moneda)}\n✅ Paid: ${fm(m.paid, d.moneda)}\n📉 Balance: ${fm(m.saldo, d.moneda)}\n📊 Progress: ${Math.round(m.avance * 100)}%\n📅 Next payment: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Public read-only link:\n${link}`;
+    : `💸 *My Debt* – ${d.nombre}\n💰 Borrowed: ${fm(d.monto, d.moneda)}\n✅ Paid: ${fm(m.paid, d.moneda)}\n📉 Balance: ${fm(m.saldo, d.moneda)}\n📊 Progress: ${Math.round(m.avance * 100)}%\n📅 Next payment: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Public read-only view:\n${link}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
 /* ---------- Vista Pública (Sin Login) ---------- */
 async function vShared(tkn) {
-  app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">${currentLang==='es'?'Cargando detalles del préstamo…':'Loading loan details...'}</p></div>`;
+  app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">${t('loadingDetails')}</p></div>`;
   const r = await sb.rpc("shared_debt", { t: tkn });
   const j = r.data;
   if (r.error || !j || !j.deuda) {
-    return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${currentLang==='es'?'Enlace no válido':'Invalid Link'}</h2><p class="m">${currentLang==='es'?'Este enlace ya no está disponible o fue eliminado.':'This link is no longer available or was deleted.'}</p></div>`;
+    return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${t('invalidLink')}</h2><p class="m">${t('invalidLinkDesc')}</p></div>`;
   }
   const d = { ...j.deuda, ingreso_mensual: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
   app.innerHTML = `
   <div class="top">
     <h1>My <b>Debt</b></h1>
-    <span class="user-pill">${currentLang==='es'?'Modo Lectura':'Read-Only'}</span>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="user-pill">${t('readOnly')}</span>
+      <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
+        🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
+      </button>
+    </div>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h2>${e(d.nombre)}</h2>
     <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
-    <div class="m">${currentLang==='es'?'Saldo Restante (de':'Remaining Balance (of'} ${fm(d.monto, d.moneda)} ${currentLang==='es'?'original)':'original)'}</div>
+    <div class="m">${t('remainingBalance')} ${fm(d.monto, d.moneda)} ${t('originalSuffix')}</div>
     ${bar(m.avance)}
     <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
   <div class="card">
-    <h2>${currentLang==='es'?'Historial de Abonos Recibidos':'Received Payments History'}</h2>
+    <h2>${t('paymentHistoryTitle')}</h2>
     ${j.abonos.slice().reverse().map(a => `
     <div class="ab r">
       <span><b class="o">${fm(a.monto, d.moneda)}</b><span class="m"> ${e(a.nota || "")}</span></span>
       <span class="m">${fd(a.fecha)}</span>
-    </div>`).join("") || `<p class="m">${currentLang==='es'?'Sin abonos registrados.':'No payments recorded.'}</p>`}
+    </div>`).join("") || `<p class="m">${t('noPayments')}</p>`}
   </div>`;
 }
 
 /* ---------- Arranque Blindado ---------- */
 (async () => {
   const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
-  const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})$/i);
+  
+  // Detección de enlace compartido y parámetro opcional de idioma ?lang=es|en
+  const hashMatch = location.hash.match(/^#\/v\/([0-9a-f-]{36})(?:\?lang=(es|en))?/i);
+  
+  // Revisar si viene un parámetro lang en la URL compartida
+  const urlParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
+  const langParam = urlParams.get('lang');
+  if (langParam && (langParam === 'es' || langParam === 'en')) {
+    currentLang = langParam;
+    localStorage.setItem("my_debt_lang", currentLang);
+  }
+
+  const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})/i);
   
   if (sh && OK) {
     await vShared(sh[1]);
