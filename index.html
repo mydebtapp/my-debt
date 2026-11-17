@@ -495,7 +495,7 @@ function vOnboarding() {
   <div style="padding-top:30px">
     <div class="card">
       <h2>${currentLang==='es'?'Crea tu nombre de usuario':'Create your username'}</h2>
-      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @oscargl94).':'Choose a unique handle for your profile (e.g. @oscargl94).'}</p>
+      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @amelie123).':'Choose a unique handle for your profile (e.g. @amelie123).'}</p>
       <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
       <input id="un" placeholder="@tu_usuario">
       <button onclick="saveUsername()">${currentLang==='es'?'Continuar':'Continue'}</button>
@@ -856,10 +856,11 @@ async function vShared(tkn) {
   </div>`;
 }
 
-/* ---------- Arranque Blindado ---------- */
+/* ---------- Arranque Blindado y Manejo de Auth Tokens ---------- */
 (async () => {
   const hideSplash = () => { const s = $("#splash"); if(s) s.remove(); };
   
+  // 1. Detectar si viene un enlace compartido público
   const urlParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
   const langParam = urlParams.get('lang');
   if (langParam && (langParam === 'es' || langParam === 'en')) {
@@ -868,7 +869,6 @@ async function vShared(tkn) {
   }
 
   const sh = location.hash.match(/^#\/v\/([0-9a-f-]{36})/i);
-  
   if (sh && OK) {
     await vShared(sh[1]);
     hideSplash();
@@ -882,10 +882,16 @@ async function vShared(tkn) {
   }
 
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    // Supabase procesa automáticamente el token de confirmación del correo si viene en el hash
+    const { data: { session }, error } = await sb.auth.getSession();
     U = session ? session.user : null;
 
     if (U) {
+      // Limpiar el hash de la URL si venía un token de confirmación para dejar la URL limpia
+      if (window.location.hash.includes('access_token')) {
+        history.replaceState(null, '', window.location.pathname);
+      }
+
       await load();
       if (!PRO.username) {
         vOnboarding();
