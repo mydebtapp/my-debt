@@ -156,7 +156,7 @@ const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "auth" };
 let hideAmounts = localStorage.getItem("my_debt_hide_amounts") === "true";
 let expandedCards = {}; 
-let newCreditors = [{ name: "", amount: "" }]; // Estado temporal para múltiples acreedores en nuevo préstamo
+let newCreditors = [{ name: "", amount: "" }];
 const $ = s => document.querySelector(s), app = $("#app");
 
 /* ---------- Sistema de Idiomas (i18n) ---------- */
@@ -176,7 +176,8 @@ const dict = {
     creditorName: "Nombre del Acreedor (ej. Mamá)",
     creditorAmount: "Monto Asignado",
     addCreditorBtn: "+ Añadir otro acreedor",
-    removeCreditor: "Quitar",
+    selectCreditor: "Acreedor Destino",
+    generalPayment: "General / A toda la deuda",
     incomeAmount: "Monto de Ingreso",
     incomeFreq: "Frecuencia de Ingreso",
     contributionType: "Tipo de Aporte",
@@ -252,7 +253,8 @@ const dict = {
     creditorName: "Creditor Name (e.g. Mom)",
     creditorAmount: "Assigned Amount",
     addCreditorBtn: "+ Add another creditor",
-    removeCreditor: "Remove",
+    selectCreditor: "Target Creditor",
+    generalPayment: "General / Entire loan",
     incomeAmount: "Income Amount",
     incomeFreq: "Income Frequency",
     contributionType: "Contribution Type",
@@ -265,7 +267,7 @@ const dict = {
     periodicQuota: "Periodic Quota",
     incomeCommitment: "Income Commitment",
     estPayoff: "Estimated Payoff",
-    punctuality: "Puntualidad",
+    punctuality: "Punctuality",
     shareWhatsApp: "Share via WhatsApp",
     registerPayment: "Register Payment",
     date: "Date",
@@ -428,11 +430,11 @@ async function upload(f) {
 }
 
 /* ---------- Navegación y Vistas con Blindaje de Seguridad ---------- */
-const go = (n, id) => {
+const go = (n, id, creditorName) => {
   if (!U && n !== 'auth' && n !== 'signup') {
     V = { n: "auth" };
   } else {
-    V = { n, id };
+    V = { n, id, creditorName };
   }
   render();
   window.scrollTo(0, 0);
@@ -633,7 +635,7 @@ function exportCSV() {
   toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
-/* ---------- Vista Principal (Dashboard con Desglose de Múltiples Acreedores) ---------- */
+/* ---------- Vista Principal (Dashboard con Desglose por Acreedor) ---------- */
 function vList() {
   if (!U) return go('auth');
   const by = {};
@@ -712,14 +714,17 @@ function vList() {
               <div class="kl" style="margin-bottom:8px; font-weight:600; text-transform:uppercase;">${t('creditorsListTitle')}</div>
               ${creditors.map(cr => {
                 const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
-                const crSaldo = m.saldo * proportion;
-                const crPaid = m.paid * proportion;
+                const crAb = (AB[d.id] || []).filter(a => a.acreedor_nombre === cr.name);
+                const crPaid = crAb.reduce((s, a) => s + +a.monto, 0);
+                const crSaldo = Math.max(0, (+cr.amount) - crPaid);
                 const crAvance = +cr.amount > 0 ? Math.min(1, crPaid / +cr.amount) : 0;
                 return `
-                <div style="background:#0b0f19; border:1px solid var(--l); border-radius:10px; padding:10px; margin-bottom:8px;">
-                  <div class="r"><b style="font-size:14px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700; font-size:14px">${fm(crSaldo, d.moneda)}</span></div>
-                  ${bar(crAvance)}
-                  <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
+                <div style="background:#0b0f19; border:1px solid var(--l); border-radius:10px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <div style="flex:1; cursor:pointer;" onclick="go('det','${d.id}','${encodeURIComponent(cr.name)}')">
+                    <div class="r"><b style="font-size:14px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700; font-size:14px">${fm(crSaldo, d.moneda)}</span></div>
+                    ${bar(crAvance)}
+                    <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${t('detailsLink')}</span></div>
+                  </div>
                 </div>`;
               }).join("")}
             </div>
@@ -737,7 +742,7 @@ function vList() {
   ${navBar()}`;
 }
 
-/* ---------- Vista Nuevo Préstamo (Con Múltiples Acreedores Interactivos) ---------- */
+/* ---------- Vista Nuevo Préstamo ---------- */
 function vNew() {
   if (!U) return go('auth');
   const fq = getFQ();
@@ -816,14 +821,12 @@ function vNew() {
 }
 
 function addCreditorRow() {
-  // Guardar valores actuales antes de redibujar
   document.querySelectorAll('#creditors-container .g').forEach((row, idx) => {
     const inputs = row.querySelectorAll('input');
     if(inputs[0]) newCreditors[idx].name = inputs[0].value;
     if(inputs[1]) newCreditors[idx].amount = inputs[1].value;
   });
   newCreditors.push({ name: "", amount: "" });
-  // Re-renderizar solo la sección o la vista
   vNew();
 }
 
@@ -843,7 +846,6 @@ function updateCreditor(idx, field, val) {
 
 async function saveDeb() {
   if (!U) return go('auth');
-  // Capturar inputs actuales del DOM por si acaso
   document.querySelectorAll('#creditors-container .g').forEach((row, idx) => {
     const inputs = row.querySelectorAll('input');
     if(inputs[0] && newCreditors[idx]) newCreditors[idx].name = inputs[0].value;
@@ -875,19 +877,22 @@ async function saveDeb() {
   const r = await sb.from("deudas").insert(d);
   if (r.error) return toast(r.error.message);
   
-  newCreditors = [{ name: "", amount: "" }]; // Resetear formulario temporal
+  newCreditors = [{ name: "", amount: "" }];
   await load();
   go("list");
   toast(currentLang==='es'?"Deuda creada con éxito":"Loan created successfully");
 }
 
-/* ---------- Vista Detalle Préstamo ---------- */
+/* ---------- Vista Detalle Préstamo (Con Selector de Acreedor y WhatsApp Individual) ---------- */
 function vDet() {
   if (!U) return go('auth');
   const d = DEB.find(x => x.id === V.id);
   if (!d) return go("list");
-  const ab = (AB[d.id] || []).slice().reverse();
-  const m = met(d, AB[d.id] || []);
+  const targetCreditor = V.creditorName ? decodeURIComponent(V.creditorName) : null;
+  
+  const allAb = AB[d.id] || [];
+  const ab = (targetCreditor ? allAb.filter(a => a.acreedor_nombre === targetCreditor) : allAb).slice().reverse();
+  const m = met(d, allAb);
   const fq = getFQ();
   let creditors = [];
   try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
@@ -898,7 +903,7 @@ function vDet() {
     <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
   </div>
   <div class="card" style="text-align:center;padding:24px">
-    <h1 style="margin-bottom:4px">${e(d.nombre)}</h1>
+    <h1 style="margin-bottom:4px">${e(d.nombre)} ${targetCreditor ? '· ' + e(targetCreditor) : ''}</h1>
     <p class="m">${fq[d.frecuencia]} · ${d.tasa ? d.tasa + "% " + (currentLang==='es'?'anual':'annual') : (currentLang==='es'?'Sin intereses':'No interest')}</p>
     <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
     <div class="m">${currentLang==='es'?'Saldo Insoluto (de':'Remaining balance (of'} ${fm(d.monto, d.moneda)} ${currentLang==='es'?'original)':'original)'}</div>
@@ -911,15 +916,25 @@ function vDet() {
       <h2>${t('creditorsListTitle')}</h2>
       ${creditors.map(cr => {
         const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
-        const crSaldo = m.saldo * proportion;
-        const crAvance = +cr.amount > 0 ? Math.min(1, (m.paid * proportion) / +cr.amount) : 0;
+        const crAb = allAb.filter(a => a.acreedor_nombre === cr.name);
+        const crPaid = crAb.reduce((s, a) => s + +a.monto, 0);
+        const crSaldo = Math.max(0, (+cr.amount) - crPaid);
+        const crAvance = +cr.amount > 0 ? Math.min(1, crPaid / +cr.amount) : 0;
+        const isSelected = targetCreditor === cr.name;
         return `
-        <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px;">
-          <div class="r"><b style="font-size:15px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span></div>
+        <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px; background:${isSelected ? 'rgba(249,115,22,0.05)' : 'transparent'}; border-radius:8px; padding:8px;">
+          <div class="r">
+            <b style="font-size:15px; cursor:pointer; color:${isSelected ? 'var(--o)' : 'var(--w)'}" onclick="go('det','${d.id}','${encodeURIComponent(cr.name)}')">${e(cr.name)} ${isSelected ? '(Filtro activo)' : ''}</b>
+            <span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span>
+          </div>
           ${bar(crAvance)}
-          <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
+          <div class="r m" style="font-size:12px">
+            <span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span>
+            <button class="t" onclick="waCreditor('${d.id}','${e(cr.name)}')" style="color:var(--o); font-size:12px; font-weight:600;">${t('shareWhatsApp')} (${e(cr.name)})</button>
+          </div>
         </div>`;
       }).join("")}
+      ${targetCreditor ? `<div style="text-align:center; margin-top:10px;"><button class="s" onclick="go('det','${d.id}')" style="font-size:12px; padding:6px;">Ver toda la deuda general</button></div>` : ''}
     </div>
   ` : ''}
 
@@ -931,10 +946,17 @@ function vDet() {
     <div class="k"><div class="kl">${t('punctuality')}</div><div class="kv o">${m.punt}%</div></div>
   </div>
 
-  <button onclick="wa('${d.id}')">${t('shareWhatsApp')}</button>
+  ${!targetCreditor ? `<button onclick="wa('${d.id}')">${t('shareWhatsApp')}</button>` : ''}
   
   <div class="card">
     <h2>${t('registerPayment')}</h2>
+    ${creditors.length > 0 ? `
+      <label>${t('selectCreditor')}</label>
+      <select id="acsel">
+        <option value="">${t('generalPayment')}</option>
+        ${creditors.map(c => `<option value="${e(c.name)}" ${targetCreditor === c.name ? 'selected' : ''}>${e(c.name)}</option>`).join("")}
+      </select>
+    ` : ''}
     <div class="g">
       <div><label>${t('date')}</label><input id="af" type="date" value="${today()}"></div>
       <div><label>${currentLang==='es'?'Monto':'Amount'} (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
@@ -947,10 +969,10 @@ function vDet() {
   </div>
 
   <div class="card">
-    <h2>${t('paymentHistory')}</h2>
+    <h2>${t('paymentHistory')} ${targetCreditor ? '(' + e(targetCreditor) + ')' : ''}</h2>
     ${ab.map(a => `
     <div class="ab">
-      <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)}</span></div>
+      <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)} ${a.acreedor_nombre ? '· ' + e(a.acreedor_nombre) : ''}</span></div>
       ${a.nota ? `<div class="m">${e(a.nota)}</div>` : ""}
       ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">${t('viewReceipt')} ↗</a>` : ""}
       <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">${t('removePayment')}</button></div>
@@ -962,16 +984,18 @@ function vDet() {
 async function addAb(id) {
   if (!U) return go('auth');
   const monto = +$("#am").value, fecha = $("#af").value, f = $("#ai").files[0];
+  const acreedor_nombre = $("#acsel") ? $("#acsel").value : null;
   if (!(monto > 0) || !fecha) return toast(currentLang==='es'?"Indica fecha y monto válido":"Provide valid date and amount");
+  
   const btn = $("#abBtn");
   btn.disabled = true;
   btn.textContent = currentLang==='es'?"Subiendo y guardando…":"Uploading and saving...";
   try {
     const url = f ? await upload(f) : null;
-    const r = await sb.from("abonos").insert({ deuda_id: id, fecha, monto, nota: $("#an").value.trim() || null, comprobante_url: url });
+    const r = await sb.from("abonos").insert({ deuda_id: id, fecha, monto, nota: $("#an").value.trim() || null, comprobante_url: url, acreedor_nombre: acreedor_nombre || null });
     if (r.error) throw r.error;
     await load();
-    go("det", id);
+    go("det", id, acreedor_nombre ? encodeURIComponent(acreedor_nombre) : null);
     toast(currentLang==='es'?"Abono registrado con éxito":"Payment registered successfully");
   } catch (x) {
     toast(x.message);
@@ -1005,61 +1029,84 @@ function wa(id) {
   const link = `${baseUrl}#/v/${d.share_token}?lang=${currentLang}`;
   
   const msg = currentLang === 'es' 
-    ? `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública de solo lectura:\n${link}`
-    : `💸 *My Debt* – ${d.nombre}\n💰 Borrowed: ${fm(d.monto, d.moneda)}\n✅ Paid: ${fm(m.paid, d.moneda)}\n📉 Balance: ${fm(m.saldo, d.moneda)}\n📊 Progress: ${Math.round(m.avance * 100)}%\n📅 Next payment: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Public read-only view:\n${link}`;
+    ? `💸 *My Debt* – ${d.nombre}\n💰 Prestado: ${fm(d.monto, d.moneda)}\n✅ Abonado: ${fm(m.paid, d.moneda)}\n📉 Saldo: ${fm(m.saldo, d.moneda)}\n📊 Avance: ${Math.round(m.avance * 100)}%\n📅 Próx pago: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Consulta pública:\n${link}`
+    : `💸 *My Debt* – ${d.nombre}\n💰 Borrowed: ${fm(d.monto, d.moneda)}\n✅ Paid: ${fm(m.paid, d.moneda)}\n📉 Balance: ${fm(m.saldo, d.moneda)}\n📊 Progress: ${Math.round(m.avance * 100)}%\n📅 Next payment: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}\n🔒 Public view:\n${link}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
-/* ---------- Vista Pública (Sin Login) ---------- */
+function waCreditor(id, credName) {
+  if (!U) return go('auth');
+  const d = DEB.find(x => x.id === id);
+  let creditors = [];
+  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+  const cr = creditors.find(c => c.name === credName);
+  if (!cr) return;
+
+  const allAb = AB[d.id] || [];
+  const crAb = allAb.filter(a => a.acreedor_nombre === credName);
+  const paid = crAb.reduce((s, a) => s + +a.monto, 0);
+  const saldo = Math.max(0, +cr.amount - paid);
+  const avance = +cr.amount > 0 ? Math.min(1, paid / +cr.amount) : 0;
+
+  const baseUrl = location.href.split("#")[0];
+  const link = `${baseUrl}#/v/${d.share_token}?c=${encodeURIComponent(credName)}&lang=${currentLang}`;
+
+  const msg = currentLang === 'es'
+    ? `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Abonado: ${fm(paid, d.moneda)}\n📉 Saldo: ${fm(saldo, d.moneda)}\n📊 Avance: ${Math.round(avance * 100)}%\n🔒 Consulta pública:\n${link}`
+    : `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Paid: ${fm(paid, d.moneda)}\n📉 Balance: ${fm(saldo, d.moneda)}\n📊 Progress: ${Math.round(avance * 100)}%\n🔒 Public view:\n${link}`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+
+/* ---------- Vista Pública (Sin Login con Soporte de Acreedor Individual) ---------- */
 async function vShared(tkn) {
   app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><p class="m">${t('loadingDetails')}</p></div>`;
+  const urlParams = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
+  const targetCreditor = urlParams.get('c') ? decodeURIComponent(urlParams.get('c')) : null;
+
   const r = await sb.rpc("shared_debt", { t: tkn });
   const j = r.data;
   if (r.error || !j || !j.deuda) {
     return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${t('invalidLink')}</h2><p class="m">${t('invalidLinkDesc')}</p></div>`;
   }
-  const d = { ...j.deuda, ingreso_monto: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
+  const d = { ...j.deuda, ingreso_monto: 0, pct_ingreso: 0 };
   let creditors = [];
   try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+
+  const allAb = j.abonos || [];
+  const activeCreditorData = targetCreditor ? creditors.find(c => c.name === targetCreditor) : null;
+  
+  let dispAmount = d.monto;
+  let dispAb = allAb;
+  if (targetCreditor && activeCreditorData) {
+    dispAmount = +activeCreditorData.amount;
+    dispAb = allAb.filter(a => a.acreedor_nombre === targetCreditor);
+  }
+  
+  const paid = dispAb.reduce((s, a) => s + +a.monto, 0);
+  const saldo = Math.max(0, dispAmount - paid);
+  const avance = dispAmount > 0 ? Math.min(1, paid / dispAmount) : 0;
 
   app.innerHTML = `
   <div class="top">
     <h1>My <b>Debt</b></h1>
     <div style="display:flex; gap:8px; align-items:center;">
-      <span class="user-pill">${t('readOnly')}</span>
+      <span class="user-pill">${t('readOnly')} ${targetCreditor ? '· ' + e(targetCreditor) : ''}</span>
       <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
         🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
       </button>
     </div>
   </div>
   <div class="card" style="text-align:center;padding:24px">
-    <h2>${e(d.nombre)}</h2>
-    <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(m.saldo, d.moneda)}</div>
-    <div class="m">${t('remainingBalance')} ${fm(d.monto, d.moneda)} ${t('originalSuffix')}</div>
-    ${bar(m.avance)}
-    <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+    <h2>${e(d.nombre)} ${targetCreditor ? '(' + e(targetCreditor) + ')' : ''}</h2>
+    <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(saldo, d.moneda)}</div>
+    <div class="m">${t('remainingBalance')} ${fm(dispAmount, d.moneda)} ${t('originalSuffix')}</div>
+    ${bar(avance)}
+    <div class="r m"><span>${Math.round(avance * 100)}% ${t('paidOff')}</span></div>
   </div>
-
-  ${creditors.length > 0 ? `
-    <div class="card">
-      <h2>${t('creditorsListTitle')}</h2>
-      ${creditors.map(cr => {
-        const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
-        const crSaldo = m.saldo * proportion;
-        const crAvance = +cr.amount > 0 ? Math.min(1, (m.paid * proportion) / +cr.amount) : 0;
-        return `
-        <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px;">
-          <div class="r"><b style="font-size:15px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span></div>
-          ${bar(crAvance)}
-          <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
-        </div>`;
-      }).join("")}
-    </div>
-  ` : ''}
 
   <div class="card">
     <h2>${t('paymentHistoryTitle')}</h2>
-    ${j.abonos.slice().reverse().map(a => `
+    ${dispAb.slice().reverse().map(a => `
     <div class="ab r">
       <span><b class="o">${fm(a.monto, d.moneda)}</b><span class="m"> ${e(a.nota || "")}</span></span>
       <span class="m">${fd(a.fecha)}</span>
