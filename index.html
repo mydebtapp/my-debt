@@ -155,6 +155,7 @@ const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "auth" };
 let hideAmounts = localStorage.getItem("my_debt_hide_amounts") === "true";
+let expandedCards = {}; // Control de acordeones expandidos por ID de deuda
 const $ = s => document.querySelector(s), app = $("#app");
 
 /* ---------- Sistema de Idiomas (i18n) ---------- */
@@ -225,11 +226,11 @@ const dict = {
     noAccount: "¿No tienes cuenta? Regístrate aquí",
     hasAccount: "¿Ya tienes cuenta? Inicia sesión",
     exportCsv: "Exportar datos a CSV",
-    breakdownToggle: "Ver Desglose y Analíticas",
-    generalView: "Ver Vista General",
     totalPaid: "Total Abonado",
-    progressTitle: "Progreso General",
-    projectionTitle: "Proyección Estimada"
+    progressTitle: "Progreso",
+    projectionTitle: "Proyección Estimada",
+    detailsLink: "Ver detalles completos ->",
+    csvHeaders: "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n"
   },
   en: {
     totalDebt: "Total Active Debt",
@@ -297,11 +298,11 @@ const dict = {
     noAccount: "Don't have an account? Register here",
     hasAccount: "Already have an account? Sign in",
     exportCsv: "Export data to CSV",
-    breakdownToggle: "View Breakdown & Analytics",
-    generalView: "View General Overview",
     totalPaid: "Total Paid",
-    progressTitle: "General Progress",
-    projectionTitle: "Estimated Projection"
+    progressTitle: "Progress",
+    projectionTitle: "Estimated Projection",
+    detailsLink: "View full details ->",
+    csvHeaders: "Debt,OriginalAmount,Currency,AnnualRate,Frequency,StartDate\n"
   }
 };
 
@@ -324,9 +325,8 @@ const toggleHideAmounts = () => {
   render();
 };
 
-let showBreakdown = false;
-const toggleBreakdown = () => {
-  showBreakdown = !showBreakdown;
+const toggleCardExpand = id => {
+  expandedCards[id] = !expandedCards[id];
   render();
 };
 
@@ -608,10 +608,10 @@ async function updatePassword() {
   $("#newPw").value = "";
 }
 
-/* ---------- Exportar a CSV ---------- */
+/* ---------- Exportar a CSV (Soporte Bilingüe) ---------- */
 function exportCSV() {
   if (!DEB.length) return toast(currentLang==='es'?"No hay deudas para exportar":"No debts to export");
-  let csv = "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n";
+  let csv = t('csvHeaders');
   DEB.forEach(d => {
     csv += `"${d.nombre}",${d.monto},${d.moneda},${d.tasa},${d.frecuencia},${d.fecha_inicio}\n`;
   });
@@ -624,26 +624,20 @@ function exportCSV() {
   toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
-/* ---------- Vista Principal (Dashboard con Opción de Desglose) ---------- */
+/* ---------- Vista Principal (Dashboard con Tarjetas KPI Expandibles por Deuda) ---------- */
 function vList() {
   if (!U) return go('auth');
   const by = {};
   let totalSal = 0;
-  let totalPaid = 0;
-  let totalOrig = 0;
 
   DEB.forEach(d => {
-    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0, p: 0 };
+    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0 };
     x.t += m.total;
     x.s += m.saldo;
-    x.p += m.paid;
     totalSal += m.saldo;
-    totalPaid += m.paid;
-    totalOrig += m.total;
   });
   
   const mainCurrency = Object.keys(by)[0] || "MXN";
-  const globalProgress = totalOrig ? (totalPaid / totalOrig) : 0;
 
   app.innerHTML = `
   <div class="top">
@@ -667,67 +661,56 @@ function vList() {
     <div class="m">${DEB.length} ${t('loansInCourse')}</div>
   </div>
 
-  <div style="margin-bottom: 20px; text-align: center;">
-    <button class="s" onclick="toggleBreakdown()" style="width:100%; font-size:14px; background:var(--c); border:1px solid var(--l);">
-      ${showBreakdown ? t('generalView') : t('breakdownToggle')}
-    </button>
-  </div>
-
-  ${showBreakdown ? `
-    <!-- VISTA DE DESGLOSE AVANZADO Y ANALÍTICO -->
-    <div class="card g">
-      <div class="k"><div class="kl">${t('totalDebt')}</div><div class="kv o">${fm(totalSal, mainCurrency)}</div></div>
-      <div class="k"><div class="kl">${t('totalPaid')}</div><div class="kv" style="color:#34d399">${fm(totalPaid, mainCurrency)}</div></div>
-      <div class="k"><div class="kl">${t('progressTitle')}</div><div class="kv">${Math.round(globalProgress * 100)}%</div></div>
-      <div class="k"><div class="kl">${t('loansInCourse')}</div><div class="kv">${DEB.length}</div></div>
-    </div>
-
+  <h2>${t('currencySummary')}</h2>
+  ${Object.keys(by).map(c => {
+    const x = by[c];
+    return `
     <div class="card">
-      <div class="r m" style="margin-bottom:6px"><span>${t('progressTitle')}</span><span>${Math.round(globalProgress * 100)}%</span></div>
-      ${bar(globalProgress)}
-    </div>
+      <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
+      ${bar(x.t ? 1 - x.s / x.t : 0)}
+      <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
+    </div>`;
+  }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
 
-    <h2>${t('myLoans')}</h2>
-    ${DEB.map(d => {
-      const m = met(d, AB[d.id] || []);
-      return `
-      <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
-        <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
-        ${bar(m.avance)}
-        <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
-        <div class="r m" style="margin-top:8px"><span>${t('estPayoff')}:</span><span style="color:var(--w); font-weight:600;">${m.fin}</span></div>
-      </div>`;
-    }).join("")}
-  ` : `
-    <!-- VISTA GENERAL LIMPIA -->
-    <h2>${t('currencySummary')}</h2>
-    ${Object.keys(by).map(c => {
-      const x = by[c];
-      return `
-      <div class="card">
-        <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
-        ${bar(x.t ? 1 - x.s / x.t : 0)}
-        <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
-      </div>`;
-    }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
-
-    <h2>${t('myLoans')}</h2>
-    ${DEB.map(d => {
-      const m = met(d, AB[d.id] || []);
-      return `
-      <div class="card" onclick="go('det','${d.id}')" style="cursor:pointer">
-        <div class="r"><b style="font-size:17px">${e(d.nombre)}</b><b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b></div>
-        ${bar(m.avance)}
-        <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
-      </div>`;
-    }).join("")}
-  `}
+  <h2>${t('myLoans')}</h2>
+  ${DEB.map(d => {
+    const m = met(d, AB[d.id] || []);
+    const isExpanded = !!expandedCards[d.id];
+    return `
+    <div class="card">
+      <div class="r" style="cursor:pointer;" onclick="toggleCardExpand('${d.id}')">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; color:var(--o); font-weight:bold; transition:transform 0.2s; display:inline-block; transform:${isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'}">▶</span>
+          <b style="font-size:17px">${e(d.nombre)}</b>
+        </div>
+        <b class="o" style="font-size:17px">${fm(m.saldo, d.moneda)}</b>
+      </div>
+      ${bar(m.avance)}
+      <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
+      
+      ${isExpanded ? `
+        <div style="margin-top:16px; border-top:1px solid var(--l); padding-top:14px;">
+          <div class="g" style="margin-bottom:10px;">
+            <div class="k"><div class="kl">${t('remainingBalance')}</div><div class="kv o" style="font-size:15px">${fm(m.saldo, d.moneda)}</div></div>
+            <div class="k"><div class="kl">${t('totalPaid')}</div><div class="kv" style="color:#34d399; font-size:15px">${fm(m.paid, d.moneda)}</div></div>
+          </div>
+          <div class="g" style="margin-bottom:14px;">
+            <div class="k"><div class="kl">${t('progressTitle')}</div><div class="kv" style="font-size:15px">${Math.round(m.avance * 100)}%</div></div>
+            <div class="k"><div class="kl">${t('projectionTitle')}</div><div class="kv" style="font-size:14px">${m.fin}</div></div>
+          </div>
+          <div style="text-align:right;">
+            <button class="t" onclick="go('det','${d.id}')" style="color:var(--o); font-size:13px; font-weight:600;">${t('detailsLink')}</button>
+          </div>
+        </div>
+      ` : ''}
+    </div>`;
+  }).join("")}
   
   <button class="fab" onclick="go('new')">+ ${t('newDebtBtn')}</button>
   ${navBar()}`;
 }
 
-/* ---------- Vista Nuevo Préstamo (Con Frecuencia de Ingresos y Aporte Fijo/Pct) ---------- */
+/* ---------- Vista Nuevo Préstamo ---------- */
 function vNew() {
   if (!U) return go('auth');
   const fq = getFQ();
