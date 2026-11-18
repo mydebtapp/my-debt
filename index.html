@@ -155,7 +155,8 @@ const sb = OK ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 let U = null, PRO = {}, DEB = [], AB = {}, V = { n: "auth" };
 let hideAmounts = localStorage.getItem("my_debt_hide_amounts") === "true";
-let expandedCards = {}; // Control de acordeones expandidos por ID de deuda
+let expandedCards = {}; 
+let newCreditors = [{ name: "", amount: "" }]; // Estado temporal para múltiples acreedores en nuevo préstamo
 const $ = s => document.querySelector(s), app = $("#app");
 
 /* ---------- Sistema de Idiomas (i18n) ---------- */
@@ -171,8 +172,11 @@ const dict = {
     paidOff: "liquidado",
     next: "Próx",
     noDebts: "Sin deudas registradas.",
-    creditor: "Acreedor / Nombre",
-    amountBorrowed: "Monto Prestado",
+    loanTitle: "Título del Préstamo / Grupo",
+    creditorName: "Nombre del Acreedor (ej. Mamá)",
+    creditorAmount: "Monto Asignado",
+    addCreditorBtn: "+ Añadir otro acreedor",
+    removeCreditor: "Quitar",
     incomeAmount: "Monto de Ingreso",
     incomeFreq: "Frecuencia de Ingreso",
     contributionType: "Tipo de Aporte",
@@ -230,6 +234,7 @@ const dict = {
     progressTitle: "Progreso",
     projectionTitle: "Proyección Estimada",
     detailsLink: "Ver detalles completos ->",
+    creditorsListTitle: "Desglose por Acreedor",
     csvHeaders: "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n"
   },
   en: {
@@ -243,8 +248,11 @@ const dict = {
     paidOff: "paid off",
     next: "Next",
     noDebts: "No debts recorded.",
-    creditor: "Creditor / Name",
-    amountBorrowed: "Amount Borrowed",
+    loanTitle: "Loan / Group Title",
+    creditorName: "Creditor Name (e.g. Mom)",
+    creditorAmount: "Assigned Amount",
+    addCreditorBtn: "+ Add another creditor",
+    removeCreditor: "Remove",
     incomeAmount: "Income Amount",
     incomeFreq: "Income Frequency",
     contributionType: "Contribution Type",
@@ -257,7 +265,7 @@ const dict = {
     periodicQuota: "Periodic Quota",
     incomeCommitment: "Income Commitment",
     estPayoff: "Estimated Payoff",
-    punctuality: "Punctuality",
+    punctuality: "Puntualidad",
     shareWhatsApp: "Share via WhatsApp",
     registerPayment: "Register Payment",
     date: "Date",
@@ -302,6 +310,7 @@ const dict = {
     progressTitle: "Progress",
     projectionTitle: "Estimated Projection",
     detailsLink: "View full details ->",
+    creditorsListTitle: "Creditor Breakdown",
     csvHeaders: "Debt,OriginalAmount,Currency,AnnualRate,Frequency,StartDate\n"
   }
 };
@@ -526,7 +535,7 @@ function vOnboarding() {
   <div style="padding-top:30px">
     <div class="card">
       <h2>${currentLang==='es'?'Crea tu nombre de usuario':'Create your username'}</h2>
-      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @alice123).':'Choose a unique handle for your profile (e.g. @alice123).'}</p>
+      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @Alice123).':'Choose a unique handle for your profile (e.g. @Alice123).'}</p>
       <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
       <input id="un" placeholder="@tu_usuario">
       <button onclick="saveUsername()">${currentLang==='es'?'Continuar':'Continue'}</button>
@@ -608,7 +617,7 @@ async function updatePassword() {
   $("#newPw").value = "";
 }
 
-/* ---------- Exportar a CSV (Soporte Bilingüe) ---------- */
+/* ---------- Exportar a CSV ---------- */
 function exportCSV() {
   if (!DEB.length) return toast(currentLang==='es'?"No hay deudas para exportar":"No debts to export");
   let csv = t('csvHeaders');
@@ -624,7 +633,7 @@ function exportCSV() {
   toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
-/* ---------- Vista Principal (Dashboard con Tarjetas KPI Expandibles por Deuda) ---------- */
+/* ---------- Vista Principal (Dashboard con Desglose de Múltiples Acreedores) ---------- */
 function vList() {
   if (!U) return go('auth');
   const by = {};
@@ -676,6 +685,9 @@ function vList() {
   ${DEB.map(d => {
     const m = met(d, AB[d.id] || []);
     const isExpanded = !!expandedCards[d.id];
+    let creditors = [];
+    try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+
     return `
     <div class="card">
       <div class="r" style="cursor:pointer;" onclick="toggleCardExpand('${d.id}')">
@@ -694,10 +706,25 @@ function vList() {
             <div class="k"><div class="kl">${t('remainingBalance')}</div><div class="kv o" style="font-size:15px">${fm(m.saldo, d.moneda)}</div></div>
             <div class="k"><div class="kl">${t('totalPaid')}</div><div class="kv" style="color:#34d399; font-size:15px">${fm(m.paid, d.moneda)}</div></div>
           </div>
-          <div class="g" style="margin-bottom:14px;">
-            <div class="k"><div class="kl">${t('progressTitle')}</div><div class="kv" style="font-size:15px">${Math.round(m.avance * 100)}%</div></div>
-            <div class="k"><div class="kl">${t('projectionTitle')}</div><div class="kv" style="font-size:14px">${m.fin}</div></div>
-          </div>
+          
+          ${creditors.length > 0 ? `
+            <div style="margin-top:12px; margin-bottom:12px;">
+              <div class="kl" style="margin-bottom:8px; font-weight:600; text-transform:uppercase;">${t('creditorsListTitle')}</div>
+              ${creditors.map(cr => {
+                const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
+                const crSaldo = m.saldo * proportion;
+                const crPaid = m.paid * proportion;
+                const crAvance = +cr.amount > 0 ? Math.min(1, crPaid / +cr.amount) : 0;
+                return `
+                <div style="background:#0b0f19; border:1px solid var(--l); border-radius:10px; padding:10px; margin-bottom:8px;">
+                  <div class="r"><b style="font-size:14px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700; font-size:14px">${fm(crSaldo, d.moneda)}</span></div>
+                  ${bar(crAvance)}
+                  <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
+                </div>`;
+              }).join("")}
+            </div>
+          ` : ''}
+
           <div style="text-align:right;">
             <button class="t" onclick="go('det','${d.id}')" style="color:var(--o); font-size:13px; font-weight:600;">${t('detailsLink')}</button>
           </div>
@@ -710,7 +737,7 @@ function vList() {
   ${navBar()}`;
 }
 
-/* ---------- Vista Nuevo Préstamo ---------- */
+/* ---------- Vista Nuevo Préstamo (Con Múltiples Acreedores Interactivos) ---------- */
 function vNew() {
   if (!U) return go('auth');
   const fq = getFQ();
@@ -720,11 +747,30 @@ function vNew() {
     <h1>${currentLang==='es'?'Nueva':'New'} <b>${currentLang==='es'?'Deuda':'Debt'}</b></h1>
   </div>
   <div class="card">
-    <label>${t('creditor')}</label>
-    <input id="n" placeholder="${currentLang==='es'?'Ej. Préstamo Mamá':'E.g. Mom Loan'}">
+    <label>${t('loanTitle')}</label>
+    <input id="n" placeholder="${currentLang==='es'?'Ej. Préstamos Familiares':'E.g. Family Loans'}">
+
+    <div style="margin-top:14px; margin-bottom:14px; border-top:1px solid var(--l); padding-top:14px;">
+      <label style="font-weight:700; color:var(--w); margin-bottom:8px;">${t('creditorsListTitle')}</label>
+      <div id="creditors-container">
+        ${newCreditors.map((c, idx) => `
+          <div class="g" style="margin-bottom:8px; align-items:center;" id="cred-row-${idx}">
+            <div>
+              <input type="text" placeholder="${t('creditorName')}" value="${e(c.name)}" oninput="updateCreditor(${idx}, 'name', this.value)">
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="number" inputmode="decimal" step="0.01" placeholder="${t('creditorAmount')}" value="${c.amount}" oninput="updateCreditor(${idx}, 'amount', this.value)">
+              ${newCreditors.length > 1 ? `<button type="button" class="s" onclick="removeCreditorRow(${idx})" style="min-height:50px; width:50px; padding:0; border-radius:14px; color:#f87171; border-color:#3a2a2a;">X</button>` : ''}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <button type="button" class="s" onclick="addCreditorRow()" style="font-size:13px; margin-top:4px;">${t('addCreditorBtn')}</button>
+    </div>
+
     <div class="g">
-      <div><label>${t('amountBorrowed')}</label><input id="mo" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
       <div><label>${currentLang==='es'?'Moneda':'Currency'}</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
+      <div><label>${t('annualInterest')}</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
     </div>
 
     <div class="g">
@@ -762,21 +808,55 @@ function vNew() {
       ${Object.keys(fq).map(k => `<option value="${k}">${fq[k]}</option>`).join("")}
     </select>
     <div style="display:none"><label>${currentLang==='es'?'Día específico del mes (1-31)':'Specific day of month (1-31)'}</label><input id="dm" type="number" min="1" max="31"></div>
-    <div class="g">
-      <div><label>${t('annualInterest')}</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
-      <div><label>${t('startDate')}</label><input id="fi" type="date" value="${today()}"></div>
-    </div>
+    
+    <div><label>${t('startDate')}</label><input id="fi" type="date" value="${today()}"></div>
     <button onclick="saveDeb()">${t('saveLoan')}</button>
   </div>
   ${navBar()}`;
 }
 
+function addCreditorRow() {
+  // Guardar valores actuales antes de redibujar
+  document.querySelectorAll('#creditors-container .g').forEach((row, idx) => {
+    const inputs = row.querySelectorAll('input');
+    if(inputs[0]) newCreditors[idx].name = inputs[0].value;
+    if(inputs[1]) newCreditors[idx].amount = inputs[1].value;
+  });
+  newCreditors.push({ name: "", amount: "" });
+  // Re-renderizar solo la sección o la vista
+  vNew();
+}
+
+function removeCreditorRow(idx) {
+  document.querySelectorAll('#creditors-container .g').forEach((row, i) => {
+    const inputs = row.querySelectorAll('input');
+    if(inputs[0]) newCreditors[i].name = inputs[0].value;
+    if(inputs[1]) newCreditors[i].amount = inputs[1].value;
+  });
+  newCreditors.splice(idx, 1);
+  vNew();
+}
+
+function updateCreditor(idx, field, val) {
+  if(newCreditors[idx]) newCreditors[idx][field] = val;
+}
+
 async function saveDeb() {
   if (!U) return go('auth');
+  // Capturar inputs actuales del DOM por si acaso
+  document.querySelectorAll('#creditors-container .g').forEach((row, idx) => {
+    const inputs = row.querySelectorAll('input');
+    if(inputs[0] && newCreditors[idx]) newCreditors[idx].name = inputs[0].value;
+    if(inputs[1] && newCreditors[idx]) newCreditors[idx].amount = inputs[1].value;
+  });
+
+  const validCreditors = newCreditors.filter(c => c.name.trim() && +c.amount > 0);
+  const totalAmount = validCreditors.reduce((sum, c) => sum + (+c.amount), 0);
+
   const tipoAporte = $("#tapp").value;
   const d = {
     nombre: $("#n").value.trim(),
-    monto: +$("#mo").value,
+    monto: totalAmount,
     moneda: $("#mn").value,
     ingreso_monto: +$("#iam").value || 0,
     ingreso_freq: $("#ifq").value,
@@ -786,11 +866,16 @@ async function saveDeb() {
     frecuencia: $("#fq").value,
     dia_mes: +$("#dm").value || null,
     tasa: +$("#tx").value || 0,
-    fecha_inicio: $("#fi").value || today()
+    fecha_inicio: $("#fi").value || today(),
+    acreedores_json: JSON.stringify(validCreditors)
   };
-  if (!d.nombre || !(d.monto > 0)) return toast(currentLang==='es'?"Indica nombre y monto válido":"Provide valid name and amount");
+
+  if (!d.nombre || !(d.monto > 0)) return toast(currentLang==='es'?"Indica título y al menos un acreedor con monto válido":"Provide title and at least one valid creditor");
+  
   const r = await sb.from("deudas").insert(d);
   if (r.error) return toast(r.error.message);
+  
+  newCreditors = [{ name: "", amount: "" }]; // Resetear formulario temporal
   await load();
   go("list");
   toast(currentLang==='es'?"Deuda creada con éxito":"Loan created successfully");
@@ -804,6 +889,8 @@ function vDet() {
   const ab = (AB[d.id] || []).slice().reverse();
   const m = met(d, AB[d.id] || []);
   const fq = getFQ();
+  let creditors = [];
+  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
 
   app.innerHTML = `
   <div class="top">
@@ -819,6 +906,23 @@ function vDet() {
     <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
   
+  ${creditors.length > 0 ? `
+    <div class="card">
+      <h2>${t('creditorsListTitle')}</h2>
+      ${creditors.map(cr => {
+        const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
+        const crSaldo = m.saldo * proportion;
+        const crAvance = +cr.amount > 0 ? Math.min(1, (m.paid * proportion) / +cr.amount) : 0;
+        return `
+        <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px;">
+          <div class="r"><b style="font-size:15px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span></div>
+          ${bar(crAvance)}
+          <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
+        </div>`;
+      }).join("")}
+    </div>
+  ` : ''}
+
   <h2>${t('financialMetrics')}</h2>
   <div class="card g">
     <div class="k"><div class="kl">${t('periodicQuota')}</div><div class="kv">${fm(m.cuota, d.moneda)}</div></div>
@@ -915,6 +1019,9 @@ async function vShared(tkn) {
     return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${t('invalidLink')}</h2><p class="m">${t('invalidLinkDesc')}</p></div>`;
   }
   const d = { ...j.deuda, ingreso_monto: 0, pct_ingreso: 0 }, m = met(d, j.abonos);
+  let creditors = [];
+  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+
   app.innerHTML = `
   <div class="top">
     <h1>My <b>Debt</b></h1>
@@ -932,6 +1039,24 @@ async function vShared(tkn) {
     ${bar(m.avance)}
     <div class="r m"><span>${Math.round(m.avance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${m.saldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
+
+  ${creditors.length > 0 ? `
+    <div class="card">
+      <h2>${t('creditorsListTitle')}</h2>
+      ${creditors.map(cr => {
+        const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
+        const crSaldo = m.saldo * proportion;
+        const crAvance = +cr.amount > 0 ? Math.min(1, (m.paid * proportion) / +cr.amount) : 0;
+        return `
+        <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px;">
+          <div class="r"><b style="font-size:15px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span></div>
+          ${bar(crAvance)}
+          <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${currentLang==='es'?'Original':'Original'}: ${fm(cr.amount, d.moneda)}</span></div>
+        </div>`;
+      }).join("")}
+    </div>
+  ` : ''}
+
   <div class="card">
     <h2>${t('paymentHistoryTitle')}</h2>
     ${j.abonos.slice().reverse().map(a => `
