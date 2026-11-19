@@ -44,16 +44,6 @@
     display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;
   }
   
-  .balance-card {
-    text-align: center; padding: 28px 20px; margin-bottom: 20px;
-    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-    border: 1px solid var(--l); border-radius: var(--card-radius);
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-  }
-  .balance-title { font-size: 13px; color: var(--m); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .balance-amounts-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-  .balance-amount { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
-  
   .card {
     background: var(--c); border: 1px solid var(--l);
     border-radius: var(--card-radius); padding: 18px; margin-bottom: 14px;
@@ -163,7 +153,6 @@ const $ = s => document.querySelector(s), app = $("#app");
 /* ---------- Sistema de Idiomas (i18n) ---------- */
 const dict = {
   es: {
-    totalDebt: "Deuda Total Activa",
     loansInCourse: "préstamos en curso",
     currencySummary: "Resumen por Moneda",
     myLoans: "Mis Préstamos",
@@ -179,8 +168,9 @@ const dict = {
     addCreditorBtn: "+ Añadir otro acreedor",
     selectCreditor: "Acreedor Destino",
     generalPayment: "General / A toda la deuda",
-    incomeAmount: "Monto de Ingreso",
-    incomeFreq: "Frecuencia de Ingreso",
+    periodIncome: "Ingreso recibido en este periodo",
+    calcHintPrefix: "Aporte sugerido (",
+    calcHintSuffix: "% de tu ingreso):",
     contributionType: "Tipo de Aporte",
     contribPct: "Porcentaje de Aporte (%)",
     contribFixed: "Monto Fijo de Aporte",
@@ -188,7 +178,7 @@ const dict = {
     annualInterest: "Tasa Interés Anual %",
     startDate: "Fecha de Inicio",
     financialMetrics: "Métricas Financieras",
-    periodicQuota: "Cuota Periódica",
+    periodicQuota: "Cuota de Referencia",
     incomeCommitment: "Compromiso s/ Ingreso",
     estPayoff: "Liquidación Estimada",
     punctuality: "Puntualidad",
@@ -205,8 +195,6 @@ const dict = {
     profileTitle: "Perfil de Usuario",
     emailLabel: "Correo Electrónico",
     passLabel: "Contraseña Registrada",
-    showPass: "Mostrar contraseña",
-    hidePass: "Ocultar contraseña",
     changePassTitle: "Cambiar Contraseña",
     newPassLabel: "Nueva Contraseña",
     updatePassBtn: "Actualizar Contraseña",
@@ -218,13 +206,14 @@ const dict = {
     navProfile: "Perfil",
     navSignOut: "Salir",
     readOnly: "Modo Lectura",
-    remainingBalance: "Saldo Restante (de",
+    remainingBalance: "Saldo Restante",
+    remainingOfPrefix: "Saldo Restante (de",
     originalSuffix: "original)",
     paymentHistoryTitle: "Historial de Abonos Recibidos",
     noPayments: "Sin abonos registrados.",
     invalidLink: "Enlace no válido",
     invalidLinkDesc: "Este enlace ya no está disponible o fue eliminado.",
-    loadingDetails: "Cargando detalles del préstamo…",
+    loadingDetails: "Cargando detalles del préstamo...",
     signInTitle: "Iniciar Sesión",
     signUpTitle: "Crear Cuenta Nueva",
     signInBtn: "Entrar",
@@ -237,13 +226,12 @@ const dict = {
     projectionTitle: "Proyección Estimada",
     detailsLink: "Ver detalles completos ->",
     creditorsListTitle: "Desglose por Acreedor",
-    activeFilter: "Filtro activo",
-    viewAllDebt: "Ver toda la deuda general",
-    csvHeaders: "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n",
-    duplicateCreditorError: "No puedes repetir nombres de acreedores en el mismo préstamo."
+    activeFilter: "(Filtro activo)",
+    viewAllLoan: "Ver toda la deuda general",
+    duplicateCreditor: "No repitas nombres de acreedores en la misma deuda",
+    csvHeaders: "Deuda,MontoOriginal,Moneda,TasaAnual,Frecuencia,FechaInicio\n"
   },
   en: {
-    totalDebt: "Total Active Debt",
     loansInCourse: "loans in progress",
     currencySummary: "Summary by Currency",
     myLoans: "My Loans",
@@ -259,8 +247,9 @@ const dict = {
     addCreditorBtn: "+ Add another creditor",
     selectCreditor: "Target Creditor",
     generalPayment: "General / Entire loan",
-    incomeAmount: "Income Amount",
-    incomeFreq: "Income Frequency",
+    periodIncome: "Income received this period",
+    calcHintPrefix: "Suggested payment (",
+    calcHintSuffix: "% of your income):",
     contributionType: "Contribution Type",
     contribPct: "Contribution Percentage (%)",
     contribFixed: "Fixed Contribution Amount",
@@ -268,10 +257,10 @@ const dict = {
     annualInterest: "Annual Interest %",
     startDate: "Start Date",
     financialMetrics: "Financial Metrics",
-    periodicQuota: "Periodic Quota",
+    periodicQuota: "Reference Quota",
     incomeCommitment: "Income Commitment",
     estPayoff: "Estimated Payoff",
-    punctuality: "Puntualidad",
+    punctuality: "Punctuality",
     shareWhatsApp: "Share via WhatsApp",
     registerPayment: "Register Payment",
     date: "Date",
@@ -285,8 +274,6 @@ const dict = {
     profileTitle: "User Profile",
     emailLabel: "Email Address",
     passLabel: "Registered Password",
-    showPass: "Show password",
-    hidePass: "Hide password",
     changePassTitle: "Change Password",
     newPassLabel: "New Password",
     updatePassBtn: "Update Password",
@@ -298,7 +285,8 @@ const dict = {
     navProfile: "Profile",
     navSignOut: "Sign Out",
     readOnly: "Read-Only",
-    remainingBalance: "Remaining Balance (of",
+    remainingBalance: "Remaining Balance",
+    remainingOfPrefix: "Remaining Balance (of",
     originalSuffix: "original)",
     paymentHistoryTitle: "Received Payments History",
     noPayments: "No payments recorded.",
@@ -317,10 +305,10 @@ const dict = {
     projectionTitle: "Estimated Projection",
     detailsLink: "View full details ->",
     creditorsListTitle: "Creditor Breakdown",
-    activeFilter: "Active filter",
-    viewAllDebt: "View general debt overview",
-    csvHeaders: "Debt,OriginalAmount,Currency,AnnualRate,Frequency,StartDate\n",
-    duplicateCreditorError: "You cannot repeat creditor names within the same loan."
+    activeFilter: "(Active filter)",
+    viewAllLoan: "View entire general loan",
+    duplicateCreditor: "Do not repeat creditor names in the same loan",
+    csvHeaders: "Debt,OriginalAmount,Currency,AnnualRate,Frequency,StartDate\n"
   }
 };
 
@@ -377,8 +365,6 @@ const getFQ = () => ({
 });
 
 const PD = { diario: 1, semanal: 7, quincenal: 15, mensual: 30, dia_mes: 30 };
-const PM = { diario: 30, semanal: 52/12, quincenal: 2, mensual: 1, dia_mes: 1 };
-const INCOME_MULTIPLIER = { semanal: 52/12, quincenal: 2, mensual: 1 };
 
 /* ---------- Métricas Financieras ---------- */
 function nextPay(d) {
@@ -395,29 +381,51 @@ function nextPay(d) {
   return addDays(s, k * st);
 }
 
+function parseCreditors(d) {
+  try {
+    const arr = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []);
+    return Array.isArray(arr) ? arr : [];
+  } catch (err) {
+    return [];
+  }
+}
+
 function met(d, ab) {
   const paid = ab.reduce((s, a) => s + +a.monto, 0);
   const days = Math.max(0, (Date.now() - new Date(d.fecha_inicio)) / 864e5);
-  const total = +d.monto + d.monto * (d.tasa / 100) * days / 365;
+  const interestFactor = 1 + (d.tasa / 100) * days / 365;
+  const total = +d.monto * interestFactor;
   const saldo = Math.max(0, total - paid);
 
-  let monthlyInc = (d.ingreso_monto || 0) * (INCOME_MULTIPLIER[d.ingreso_freq] || 1);
   let cuota = 0;
   if (d.tipo_aporte === 'fijo') {
-    cuota = d.aporte_fijo || 0;
-  } else {
-    cuota = monthlyInc * (d.pct_ingreso || 0) / 100 / PM[d.frecuencia];
+    cuota = +d.aporte_fijo || 0;
+  } else if (ab.length > 0) {
+    cuota = paid / ab.length;
   }
 
   const n = cuota > 0 && saldo > 0 ? Math.ceil(saldo / cuota) : null;
   const esp = Math.floor(days / PD[d.frecuencia]);
   return {
-    paid, total, saldo, cuota,
+    paid, total, saldo, cuota, interestFactor,
     avance: total ? Math.min(1, paid / total) : 0,
     fin: saldo <= 0 ? (currentLang === 'es' ? "Liquidada" : "Paid off") : n ? fd(addDays(new Date(), n * PD[d.frecuencia])) : "—",
     punt: esp <= 0 ? 100 : Math.min(100, Math.round(ab.length / esp * 100)),
     next: nextPay(d)
   };
+}
+
+function metCreditor(d, allAb, cr) {
+  const m = met(d, allAb);
+  const creditors = parseCreditors(d);
+  const proportion = d.monto > 0 ? (+cr.amount / d.monto) : 0;
+  const generalPaid = allAb.filter(a => !a.acreedor_nombre).reduce((s, a) => s + +a.monto, 0);
+  const directPaid = allAb.filter(a => a.acreedor_nombre === cr.name).reduce((s, a) => s + +a.monto, 0);
+  const crPaid = directPaid + (creditors.length > 0 ? generalPaid * proportion : 0);
+  const crTotal = +cr.amount * m.interestFactor;
+  const crSaldo = Math.max(0, crTotal - crPaid);
+  const crAvance = crTotal > 0 ? Math.min(1, crPaid / crTotal) : 0;
+  return { crPaid, crTotal, crSaldo, crAvance };
 }
 
 /* ---------- Carga de Datos y Perfiles ---------- */
@@ -439,11 +447,14 @@ async function upload(f) {
   return sb.storage.from("comprobantes").getPublicUrl(p).data.publicUrl;
 }
 
-/* ---------- Navegación y Vistas con Blindaje de Seguridad ---------- */
+/* ---------- Navegación y Vistas ---------- */
 const go = (n, id, creditorName) => {
   if (!U && n !== 'auth' && n !== 'signup') {
     V = { n: "auth" };
   } else {
+    if (n === 'new' && V.n !== 'new') {
+      newCreditors = [{ name: "", amount: "" }];
+    }
     V = { n, id, creditorName };
   }
   render();
@@ -487,7 +498,7 @@ function vAuth() {
         <button class="t" onclick="go('signup')" style="font-size:14px; color:var(--o); font-weight:600;">${t('noAccount')}</button>
       </div>
       <div style="margin-top:14px">
-        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
+        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
       </div>
     </div>
   </div>`;
@@ -523,7 +534,7 @@ function vSignup() {
         <button class="t" onclick="go('auth')" style="font-size:14px; color:var(--o); font-weight:600;">${t('hasAccount')}</button>
       </div>
       <div style="margin-top:14px">
-        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">🌐 ${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
+        <button class="t" onclick="toggleLang()" style="font-size:13px; color:var(--w)">${currentLang==='es'?'Switch to English':'Cambiar a Español'}</button>
       </div>
     </div>
   </div>`;
@@ -536,7 +547,7 @@ async function register() {
 
   const r = await sb.auth.signUp({ email, password });
   if (r.error) return toast(r.error.message);
-  toast(currentLang==='es'?"¡Cuenta creada con éxito! Revisa tu correo o inicia sesión.":"Account created successfully! Check your email or sign in.");
+  toast(currentLang==='es'?"Cuenta creada con éxito. Revisa tu correo o inicia sesión.":"Account created successfully. Check your email or sign in.");
   go('auth');
 }
 
@@ -547,7 +558,7 @@ function vOnboarding() {
   <div style="padding-top:30px">
     <div class="card">
       <h2>${currentLang==='es'?'Crea tu nombre de usuario':'Create your username'}</h2>
-      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @oscargl94).':'Choose a unique handle for your profile (e.g. @oscargl94).'}</p>
+      <p class="m" style="margin-bottom:15px">${currentLang==='es'?'Elige un identificador único para tu perfil (ej. @Alice123).':'Choose a unique handle for your profile (e.g. @Alice123).'}</p>
       <label>${currentLang==='es'?'Nombre de usuario':'Username'}</label>
       <input id="un" placeholder="@tu_usuario">
       <button onclick="saveUsername()">${currentLang==='es'?'Continuar':'Continue'}</button>
@@ -584,7 +595,7 @@ function vProfile() {
     <input type="text" value="${e(PRO.username || '')}" disabled style="color:var(--m);">
 
     <label>${t('passLabel')}</label>
-    <input id="maskPw" type="password" value="••••••••••••" disabled style="color:var(--m);">
+    <input type="password" value="••••••••••••" disabled style="color:var(--m);">
   </div>
 
   <div class="card">
@@ -616,7 +627,7 @@ function exportCSV() {
   if (!DEB.length) return toast(currentLang==='es'?"No hay deudas para exportar":"No debts to export");
   let csv = t('csvHeaders');
   DEB.forEach(d => {
-    csv += `"${d.nombre}",${d.monto},${d.moneda},${d.tasa},${d.frecuencia},${d.fecha_inicio}\n`;
+    csv += `"${String(d.nombre).replace(/"/g, '""')}",${d.monto},${d.moneda},${d.tasa},${d.frecuencia},${d.fecha_inicio}\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -627,23 +638,21 @@ function exportCSV() {
   toast(currentLang==='es'?"CSV exportado con éxito":"CSV exported successfully");
 }
 
-/* ---------- Vista Principal (Dashboard con Resumen Multimoneda) ---------- */
+/* ---------- Vista Principal (Dashboard por Moneda y KPIs Expandibles) ---------- */
 function vList() {
   if (!U) return go('auth');
   const by = {};
 
   DEB.forEach(d => {
-    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0, p: 0 };
+    const m = met(d, AB[d.id] || []), x = by[d.moneda] = by[d.moneda] || { t: 0, s: 0, count: 0 };
     x.t += m.total;
     x.s += m.saldo;
-    x.p += m.paid;
+    x.count += 1;
   });
-  
-  const currencies = Object.keys(by);
 
   app.innerHTML = `
   <div class="top">
-    <div class="user-pill" onclick="go('profile')" title="Ver Perfil">
+    <div class="user-pill" onclick="go('profile')">
       <div class="user-avatar">${PRO.username ? PRO.username[1].toUpperCase() : "U"}</div>
       <span>${e(PRO.username || "@usuario")}</span>
     </div>
@@ -652,36 +661,35 @@ function vList() {
         ${hideAmounts ? t('showBalances') : t('hideBalances')}
       </button>
       <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
-        🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
+        ${currentLang === 'es' ? 'EN' : 'ES'}
       </button>
     </div>
   </div>
-  
-  <div class="balance-card">
-    <div class="balance-title">${t('totalDebt')}</div>
-    <div class="balance-amounts-grid">
-      ${currencies.length > 0 ? currencies.map(c => `<div class="balance-amount o">${fm(by[c].s, c)}</div>`).join("") : `<div class="balance-amount o">${fm(0, "MXN")}</div>`}
-    </div>
-    <div class="m" style="margin-top:6px">${DEB.length} ${t('loansInCourse')}</div>
-  </div>
 
   <h2>${t('currencySummary')}</h2>
-  ${currencies.map(c => {
+  ${Object.keys(by).map(c => {
     const x = by[c];
+    const pct = x.t ? 1 - x.s / x.t : 0;
     return `
     <div class="card">
-      <div class="r"><span><b>${c}</b></span><span class="o">${fm(x.s, c)}</span></div>
-      ${bar(x.t ? 1 - x.s / x.t : 0)}
-      <div class="r m" style="margin-top:6px"><span>${currentLang==='es'?'Total original':'Original total'}: ${fm(x.t, c)}</span><span>${currentLang==='es'?'Restante':'Remaining'}</span></div>
+      <div class="r">
+        <span><b>${c}</b> <span class="m">(${x.count} ${t('loansInCourse')})</span></span>
+        <b class="o" style="font-size:20px">${fm(x.s, c)}</b>
+      </div>
+      ${bar(pct)}
+      <div class="r m" style="margin-top:6px">
+        <span>${currentLang==='es'?'Total con interés':'Total with interest'}: ${fm(x.t, c)}</span>
+        <span>${Math.round(pct * 100)}% ${t('paidOff')}</span>
+      </div>
     </div>`;
   }).join("") || `<div class="card" style="text-align:center;padding:30px"><p class="m">${t('noDebts')}</p></div>`}
 
   <h2>${t('myLoans')}</h2>
   ${DEB.map(d => {
-    const m = met(d, AB[d.id] || []);
+    const allAb = AB[d.id] || [];
+    const m = met(d, allAb);
     const isExpanded = !!expandedCards[d.id];
-    let creditors = [];
-    try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+    const creditors = parseCreditors(d);
 
     return `
     <div class="card">
@@ -701,21 +709,22 @@ function vList() {
             <div class="k"><div class="kl">${t('remainingBalance')}</div><div class="kv o" style="font-size:15px">${fm(m.saldo, d.moneda)}</div></div>
             <div class="k"><div class="kl">${t('totalPaid')}</div><div class="kv" style="color:#34d399; font-size:15px">${fm(m.paid, d.moneda)}</div></div>
           </div>
+          <div class="g" style="margin-bottom:12px;">
+            <div class="k"><div class="kl">${t('progressTitle')}</div><div class="kv" style="font-size:15px">${Math.round(m.avance * 100)}%</div></div>
+            <div class="k"><div class="kl">${t('projectionTitle')}</div><div class="kv" style="font-size:14px">${m.fin}</div></div>
+          </div>
           
           ${creditors.length > 0 ? `
             <div style="margin-top:12px; margin-bottom:12px;">
               <div class="kl" style="margin-bottom:8px; font-weight:600; text-transform:uppercase;">${t('creditorsListTitle')}</div>
               ${creditors.map(cr => {
-                const crAb = (AB[d.id] || []).filter(a => a.acreedor_nombre === cr.name);
-                const crPaid = crAb.reduce((s, a) => s + +a.monto, 0);
-                const crSaldo = Math.max(0, (+cr.amount) - crPaid);
-                const crAvance = +cr.amount > 0 ? Math.min(1, crPaid / +cr.amount) : 0;
+                const cm = metCreditor(d, allAb, cr);
                 return `
-                <div style="background:#0b0f19; border:1px solid var(--l); border-radius:10px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                  <div style="flex:1; cursor:pointer;" onclick="go('det','${d.id}','${q(cr.name)}')">
-                    <div class="r"><b style="font-size:14px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700; font-size:14px">${fm(crSaldo, d.moneda)}</span></div>
-                    ${bar(crAvance)}
-                    <div class="r m" style="font-size:12px"><span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span><span>${t('detailsLink')}</span></div>
+                <div style="background:#0b0f19; border:1px solid var(--l); border-radius:10px; padding:10px; margin-bottom:8px;">
+                  <div style="cursor:pointer;" onclick="go('det','${d.id}','${q(cr.name)}')">
+                    <div class="r"><b style="font-size:14px">${e(cr.name)}</b><span style="color:var(--o); font-weight:700; font-size:14px">${fm(cm.crSaldo, d.moneda)}</span></div>
+                    ${bar(cm.crAvance)}
+                    <div class="r m" style="font-size:12px"><span>${Math.round(cm.crAvance * 100)}% ${t('paidOff')}</span><span>${t('detailsLink')}</span></div>
                   </div>
                 </div>`;
               }).join("")}
@@ -734,13 +743,15 @@ function vList() {
   ${navBar()}`;
 }
 
-/* ---------- Vista Nuevo Préstamo ---------- */
+/* ---------- Vista Nuevo Préstamo (Sin Ingreso Inicial) ---------- */
 const creditorsHTML = () => newCreditors.map((c, idx) => `
-  <div class="g" style="margin-bottom:8px; align-items:center;" id="cred-row-${idx}">
-    <div><input type="text" placeholder="${t('creditorName')}" value="${e(c.name)}" oninput="updateCreditor(${idx}, 'name', this.value)"></div>
+  <div class="g" style="margin-bottom:8px; align-items:center;">
+    <div>
+      <input type="text" placeholder="${t('creditorName')}" value="${e(c.name)}" oninput="updateCreditor(${idx}, 'name', this.value)">
+    </div>
     <div style="display:flex; gap:6px; align-items:center;">
       <input type="number" inputmode="decimal" step="0.01" placeholder="${t('creditorAmount')}" value="${e(c.amount)}" oninput="updateCreditor(${idx}, 'amount', this.value)">
-      ${newCreditors.length > 1 ? `<button type="button" class="s" onclick="removeCreditorRow(${idx})" style="min-height:50px; width:50px; padding:0; border-radius:14px; color:#f87171; border-color:#3a2a2a;">X</button>` : ''}
+      ${newCreditors.length > 1 ? `<button type="button" class="s" onclick="removeCreditorRow(${idx})" style="min-height:50px; width:50px; padding:0; border-radius:14px; color:#f87171; border-color:#3a2a2a; margin-top:0; margin-bottom:12px;">X</button>` : ''}
     </div>
   </div>`).join("");
 
@@ -758,27 +769,13 @@ function vNew() {
 
     <div style="margin-top:14px; margin-bottom:14px; border-top:1px solid var(--l); padding-top:14px;">
       <label style="font-weight:700; color:var(--w); margin-bottom:8px;">${t('creditorsListTitle')}</label>
-      <div id="creditors-container">
-        ${creditorsHTML()}
-      </div>
+      <div id="creditors-container">${creditorsHTML()}</div>
       <button type="button" class="s" onclick="addCreditorRow()" style="font-size:13px; margin-top:4px;">${t('addCreditorBtn')}</button>
     </div>
 
     <div class="g">
       <div><label>${currentLang==='es'?'Moneda':'Currency'}</label><select id="mn"><option>MXN</option><option>USD</option><option>EUR</option></select></div>
       <div><label>${t('annualInterest')}</label><input id="tx" type="number" inputmode="decimal" step="0.1" value="0"></div>
-    </div>
-
-    <div class="g">
-      <div><label>${t('incomeAmount')}</label><input id="iam" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div>
-        <label>${t('incomeFreq')}</label>
-        <select id="ifq">
-          <option value="semanal">${currentLang==='es'?'Semanal':'Weekly'}</option>
-          <option value="quincenal">${currentLang==='es'?'Quincenal':'Biweekly'}</option>
-          <option value="mensual" selected>${currentLang==='es'?'Mensual':'Monthly'}</option>
-        </select>
-      </div>
     </div>
 
     <div class="g">
@@ -822,28 +819,29 @@ function removeCreditorRow(idx) {
 }
 
 function updateCreditor(idx, field, val) {
-  if(newCreditors[idx]) newCreditors[idx][field] = val;
+  if (newCreditors[idx]) newCreditors[idx][field] = val;
 }
 
 async function saveDeb() {
   if (!U) return go('auth');
-  
-  const names = newCreditors.map(c => c.name.trim().toLowerCase()).filter(n => n);
-  const uniqueNames = new Set(names);
-  if (names.length !== uniqueNames.size) {
-    return toast(t('duplicateCreditorError'));
+  const validCreditors = newCreditors
+    .map(c => ({ name: c.name.trim(), amount: +c.amount }))
+    .filter(c => c.name && c.amount > 0);
+
+  const uniqueNames = new Set(validCreditors.map(c => c.name.toLowerCase()));
+  if (uniqueNames.size !== validCreditors.length) {
+    return toast(t('duplicateCreditor'));
   }
 
-  const validCreditors = newCreditors.filter(c => c.name.trim() && +c.amount > 0);
-  const totalAmount = validCreditors.reduce((sum, c) => sum + (+c.amount), 0);
-
+  const totalAmount = validCreditors.reduce((sum, c) => sum + c.amount, 0);
   const tipoAporte = $("#tapp").value;
+
   const d = {
     nombre: $("#n").value.trim(),
     monto: totalAmount,
     moneda: $("#mn").value,
-    ingreso_monto: +$("#iam").value || 0,
-    ingreso_freq: $("#ifq").value,
+    ingreso_monto: 0,
+    ingreso_freq: 'mensual',
     tipo_aporte: tipoAporte,
     pct_ingreso: tipoAporte === 'porcentaje' ? (+$("#pc").value || 0) : 0,
     aporte_fijo: tipoAporte === 'fijo' ? (+$("#afix").value || 0) : 0,
@@ -851,7 +849,7 @@ async function saveDeb() {
     dia_mes: +$("#dm").value || null,
     tasa: +$("#tx").value || 0,
     fecha_inicio: $("#fi").value || today(),
-    acreedores_json: JSON.stringify(validCreditors)
+    acreedores_json: validCreditors
   };
 
   if (!d.nombre || !(d.monto > 0)) return toast(currentLang==='es'?"Indica título y al menos un acreedor con monto válido":"Provide title and at least one valid creditor");
@@ -865,6 +863,22 @@ async function saveDeb() {
   toast(currentLang==='es'?"Deuda creada con éxito":"Loan created successfully");
 }
 
+/* ---------- Cálculo dinámico de abono según ingreso del periodo ---------- */
+function calcSuggestedPayment(pct) {
+  const incInput = $("#pinc");
+  const amInput = $("#am");
+  const hint = $("#pinc-hint");
+  if (!incInput || !amInput || !hint) return;
+  const inc = parseFloat(incInput.value) || 0;
+  if (inc > 0) {
+    const suggested = Math.round(inc * (pct / 100) * 100) / 100;
+    amInput.value = suggested.toFixed(2);
+    hint.textContent = `${t('calcHintPrefix')}${pct}${t('calcHintSuffix')} ${suggested.toFixed(2)}`;
+  } else {
+    hint.textContent = "";
+  }
+}
+
 /* ---------- Vista Detalle Préstamo ---------- */
 function vDet() {
   if (!U) return go('auth');
@@ -873,33 +887,26 @@ function vDet() {
   const targetCreditor = V.creditorName ? decodeURIComponent(V.creditorName) : null;
   
   const allAb = AB[d.id] || [];
+  const m = met(d, allAb);
   const fq = getFQ();
-  let creditors = [];
-  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+  const creditors = parseCreditors(d);
+  const activeCreditor = targetCreditor ? creditors.find(c => c.name === targetCreditor) : null;
 
-  let dispAmount = d.monto;
-  let dispPaid = allAb.reduce((s, a) => s + +a.monto, 0);
-  let dispSaldo = 0;
-  let dispAvance = 0;
-  let dispFin = "—";
-  let dispQuota = 0;
+  let headerSaldo = m.saldo;
+  let headerOrig = m.total;
+  let headerAvance = m.avance;
+  let ab = allAb.slice().reverse();
 
-  if (targetCreditor) {
-    const cr = creditors.find(c => c.name === targetCreditor);
-    dispAmount = cr ? +cr.amount : 0;
-    const crAb = allAb.filter(a => a.acreedor_nombre === targetCreditor);
-    dispPaid = crAb.reduce((s, a) => s + +a.monto, 0);
-    dispSaldo = Math.max(0, dispAmount - dispPaid);
-    dispAvance = dispAmount > 0 ? Math.min(1, dispPaid / dispAmount) : 0;
-  } else {
-    const m = met(d, allAb);
-    dispSaldo = m.saldo;
-    dispAvance = m.avance;
-    dispFin = m.fin;
-    dispQuota = m.cuota;
+  if (activeCreditor) {
+    const cm = metCreditor(d, allAb, activeCreditor);
+    headerSaldo = cm.crSaldo;
+    headerOrig = cm.crTotal;
+    headerAvance = cm.crAvance;
+    ab = allAb.filter(a => a.acreedor_nombre === targetCreditor || !a.acreedor_nombre).slice().reverse();
   }
 
-  const ab = (targetCreditor ? allAb.filter(a => a.acreedor_nombre === targetCreditor) : allAb).slice().reverse();
+  const isPct = d.tipo_aporte !== 'fijo';
+  const defaultAmount = !isPct && d.aporte_fijo > 0 ? Number(d.aporte_fijo).toFixed(2) : "";
 
   app.innerHTML = `
   <div class="top">
@@ -907,49 +914,46 @@ function vDet() {
     <button class="t" onclick="delDeb('${d.id}')" style="color:#f87171">${t('deleteLoan')}</button>
   </div>
   <div class="card" style="text-align:center;padding:24px">
-    <h1 style="margin-bottom:4px">${e(d.nombre)} ${targetCreditor ? '· ' + e(targetCreditor) : ''}</h1>
+    <h1 style="margin-bottom:4px">${e(d.nombre)} ${activeCreditor ? '· ' + e(activeCreditor.name) : ''}</h1>
     <p class="m">${fq[d.frecuencia]} · ${d.tasa ? d.tasa + "% " + (currentLang==='es'?'anual':'annual') : (currentLang==='es'?'Sin intereses':'No interest')}</p>
-    <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(dispSaldo, d.moneda)}</div>
-    <div class="m">${t('remainingBalance')} ${fm(dispAmount, d.moneda)} ${t('originalSuffix')}</div>
-    ${bar(dispAvance)}
-    <div class="r m"><span>${Math.round(dispAvance * 100)}% ${t('paidOff')}</span></div>
+    <div style="font-size:32px;font-weight:800;margin:15px 0" class="o">${fm(headerSaldo, d.moneda)}</div>
+    <div class="m">${t('remainingOfPrefix')} ${fm(headerOrig, d.moneda)} ${t('originalSuffix')}</div>
+    ${bar(headerAvance)}
+    <div class="r m"><span>${Math.round(headerAvance * 100)}% ${t('paidOff')}</span><span>${t('next')}: ${headerSaldo > 0 ? fd(iso(m.next)) : "—"}</span></div>
   </div>
   
   ${creditors.length > 0 ? `
     <div class="card">
       <h2>${t('creditorsListTitle')}</h2>
       ${creditors.map(cr => {
-        const crAb = allAb.filter(a => a.acreedor_nombre === cr.name);
-        const crPaid = crAb.reduce((s, a) => s + +a.monto, 0);
-        const crSaldo = Math.max(0, (+cr.amount) - crPaid);
-        const crAvance = +cr.amount > 0 ? Math.min(1, crPaid / +cr.amount) : 0;
+        const cm = metCreditor(d, allAb, cr);
         const isSelected = targetCreditor === cr.name;
         return `
         <div style="margin-bottom:12px; border-bottom:1px solid var(--l); padding-bottom:10px; background:${isSelected ? 'rgba(249,115,22,0.05)' : 'transparent'}; border-radius:8px; padding:8px;">
           <div class="r">
-            <b style="font-size:15px; cursor:pointer; color:${isSelected ? 'var(--o)' : 'var(--w)'}" onclick="go('det','${d.id}','${q(cr.name)}')">${e(cr.name)} ${isSelected ? '(' + t('activeFilter') + ')' : ''}</b>
-            <span style="color:var(--o); font-weight:700;">${fm(crSaldo, d.moneda)}</span>
+            <b style="font-size:15px; cursor:pointer; color:${isSelected ? 'var(--o)' : 'var(--w)'}" onclick="go('det','${d.id}','${q(cr.name)}')">${e(cr.name)} ${isSelected ? t('activeFilter') : ''}</b>
+            <span style="color:var(--o); font-weight:700;">${fm(cm.crSaldo, d.moneda)}</span>
           </div>
-          ${bar(crAvance)}
+          ${bar(cm.crAvance)}
           <div class="r m" style="font-size:12px">
-            <span>${Math.round(crAvance * 100)}% ${t('paidOff')}</span>
+            <span>${Math.round(cm.crAvance * 100)}% ${t('paidOff')}</span>
             <button class="t" onclick="waCreditor('${d.id}','${q(cr.name)}')" style="color:var(--o); font-size:12px; font-weight:600;">${t('shareWhatsApp')} (${e(cr.name)})</button>
           </div>
         </div>`;
       }).join("")}
-      ${targetCreditor ? `<div style="text-align:center; margin-top:10px;"><button class="s" onclick="go('det','${d.id}')" style="font-size:12px; padding:6px;">${t('viewAllDebt')}</button></div>` : ''}
+      ${activeCreditor ? `<div style="text-align:center; margin-top:10px;"><button class="s" onclick="go('det','${d.id}')" style="font-size:12px; padding:6px;">${t('viewAllLoan')}</button></div>` : ''}
     </div>
   ` : ''}
 
   <h2>${t('financialMetrics')}</h2>
   <div class="card g">
-    <div class="k"><div class="kl">${t('periodicQuota')}</div><div class="kv">${fm(dispQuota, d.moneda)}</div></div>
-    <div class="k"><div class="kl">${t('incomeCommitment')}</div><div class="kv o">${d.tipo_aporte === 'fijo' ? (currentLang==='es'?'Fijo':'Fixed') : d.pct_ingreso + '%'}</div></div>
-    <div class="k"><div class="kl">${t('estPayoff')}</div><div class="kv" style="font-size:15px">${dispFin}</div></div>
-    <div class="k"><div class="kl">${t('punctuality')}</div><div class="kv o">100%</div></div>
+    <div class="k"><div class="kl">${t('periodicQuota')}</div><div class="kv">${m.cuota > 0 ? fm(m.cuota, d.moneda) : "—"}</div></div>
+    <div class="k"><div class="kl">${t('incomeCommitment')}</div><div class="kv o">${!isPct ? (currentLang==='es'?'Fijo':'Fixed') : d.pct_ingreso + '%'}</div></div>
+    <div class="k"><div class="kl">${t('estPayoff')}</div><div class="kv" style="font-size:15px">${m.fin}</div></div>
+    <div class="k"><div class="kl">${t('punctuality')}</div><div class="kv o">${m.punt}%</div></div>
   </div>
 
-  ${!targetCreditor ? `<button onclick="wa('${d.id}')">${t('shareWhatsApp')}</button>` : ''}
+  ${!activeCreditor ? `<button onclick="wa('${d.id}')">${t('shareWhatsApp')}</button>` : ''}
   
   <div class="card">
     <h2>${t('registerPayment')}</h2>
@@ -960,9 +964,14 @@ function vDet() {
         ${creditors.map(c => `<option value="${e(c.name)}" ${targetCreditor === c.name ? 'selected' : ''}>${e(c.name)}</option>`).join("")}
       </select>
     ` : ''}
+    ${isPct ? `
+      <label>${t('periodIncome')} (${d.moneda})</label>
+      <input id="pinc" type="number" inputmode="decimal" step="0.01" placeholder="0.00" oninput="calcSuggestedPayment(${+d.pct_ingreso || 0})">
+      <div id="pinc-hint" class="m" style="margin-top:-6px; margin-bottom:10px; color:var(--o);"></div>
+    ` : ''}
     <div class="g">
       <div><label>${t('date')}</label><input id="af" type="date" value="${today()}"></div>
-      <div><label>${currentLang==='es'?'Monto':'Amount'} (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label>${currentLang==='es'?'Monto':'Amount'} (${d.moneda})</label><input id="am" type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="${defaultAmount}"></div>
     </div>
     <label>${t('note')}</label>
     <input id="an" placeholder="${currentLang==='es'?'Ej. Transferencia quincenal':'E.g. Biweekly transfer'}">
@@ -972,14 +981,14 @@ function vDet() {
   </div>
 
   <div class="card">
-    <h2>${t('paymentHistory')} ${targetCreditor ? '(' + e(targetCreditor) + ')' : ''}</h2>
+    <h2>${t('paymentHistory')} ${activeCreditor ? '(' + e(activeCreditor.name) + ')' : ''}</h2>
     ${ab.map(a => `
     <div class="ab">
       <div class="r"><b class="o">${fm(a.monto, d.moneda)}</b><span class="m">${fd(a.fecha)} ${a.acreedor_nombre ? '· ' + e(a.acreedor_nombre) : ''}</span></div>
       ${a.nota ? `<div class="m">${e(a.nota)}</div>` : ""}
       ${a.comprobante_url ? `<a href="${e(a.comprobante_url)}" target="_blank" rel="noopener">${t('viewReceipt')} ↗</a>` : ""}
       <div style="text-align:right;margin-top:6px"><button class="t" onclick="delAb('${a.id}')" style="color:#f87171;font-size:13px">${t('removePayment')}</button></div>
-    </div>`).join("") || `<p class="m">${currentLang==='es'?'Sin abonos registrados.':'No payments recorded.'}</p>`}
+    </div>`).join("") || `<p class="m">${t('noPayments')}</p>`}
   </div>
   ${navBar()}`;
 }
@@ -992,7 +1001,7 @@ async function addAb(id) {
   
   const btn = $("#abBtn");
   btn.disabled = true;
-  btn.textContent = currentLang==='es'?"Subiendo y guardando…":"Uploading and saving...";
+  btn.textContent = currentLang==='es'?"Subiendo y guardando...":"Uploading and saving...";
   try {
     const url = f ? await upload(f) : null;
     const r = await sb.from("abonos").insert({ deuda_id: id, fecha, monto, nota: $("#an").value.trim() || null, comprobante_url: url, acreedor_nombre: acreedor_nombre || null });
@@ -1037,27 +1046,21 @@ function wa(id) {
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
-function waCreditor(id, credNameEncoded) {
+function waCreditor(id, encodedCredName) {
   if (!U) return go('auth');
-  const credName = decodeURIComponent(credNameEncoded);
+  const credName = decodeURIComponent(encodedCredName);
   const d = DEB.find(x => x.id === id);
-  let creditors = [];
-  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
+  const creditors = parseCreditors(d);
   const cr = creditors.find(c => c.name === credName);
   if (!cr) return;
 
-  const allAb = AB[d.id] || [];
-  const crAb = allAb.filter(a => a.acreedor_nombre === credName);
-  const paid = crAb.reduce((s, a) => s + +a.monto, 0);
-  const saldo = Math.max(0, +cr.amount - paid);
-  const avance = +cr.amount > 0 ? Math.min(1, paid / +cr.amount) : 0;
-
+  const cm = metCreditor(d, AB[d.id] || [], cr);
   const baseUrl = location.href.split("#")[0];
-  const link = `${baseUrl}#/v/${d.share_token}?c=${credNameEncoded}&lang=${currentLang}`;
+  const link = `${baseUrl}#/v/${d.share_token}?c=${q(credName)}&lang=${currentLang}`;
 
   const msg = currentLang === 'es'
-    ? `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Abonado: ${fm(paid, d.moneda)}\n📉 Saldo: ${fm(saldo, d.moneda)}\n📊 Avance: ${Math.round(avance * 100)}%\n🔒 Consulta pública:\n${link}`
-    : `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Paid: ${fm(paid, d.moneda)}\n📉 Balance: ${fm(saldo, d.moneda)}\n📊 Progress: ${Math.round(avance * 100)}%\n🔒 Public view:\n${link}`;
+    ? `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Abonado: ${fm(cm.crPaid, d.moneda)}\n📉 Saldo: ${fm(cm.crSaldo, d.moneda)}\n📊 Avance: ${Math.round(cm.crAvance * 100)}%\n🔒 Consulta pública:\n${link}`
+    : `💸 *My Debt* – ${d.nombre} (${credName})\n💰 Original: ${fm(cr.amount, d.moneda)}\n✅ Paid: ${fm(cm.crPaid, d.moneda)}\n📉 Balance: ${fm(cm.crSaldo, d.moneda)}\n📊 Progress: ${Math.round(cm.crAvance * 100)}%\n🔒 Public view:\n${link}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 }
 
@@ -1073,22 +1076,22 @@ async function vShared(tkn) {
     return app.innerHTML = `<div class="card" style="text-align:center;padding:40px"><h2>${t('invalidLink')}</h2><p class="m">${t('invalidLinkDesc')}</p></div>`;
   }
   const d = { ...j.deuda, ingreso_monto: 0, pct_ingreso: 0 };
-  let creditors = [];
-  try { creditors = typeof d.acreedores_json === 'string' ? JSON.parse(d.acreedores_json) : (d.acreedores_json || []); } catch(err){ creditors = []; }
-
+  const creditors = parseCreditors(d);
   const allAb = j.abonos || [];
   const activeCreditorData = targetCreditor ? creditors.find(c => c.name === targetCreditor) : null;
   
-  let dispAmount = d.monto;
+  let dispAmount = met(d, allAb).total;
+  let dispSaldo = met(d, allAb).saldo;
+  let dispAvance = met(d, allAb).avance;
   let dispAb = allAb;
+
   if (targetCreditor && activeCreditorData) {
-    dispAmount = +activeCreditorData.amount;
-    dispAb = allAb.filter(a => a.acreedor_nombre === targetCreditor);
+    const cm = metCreditor(d, allAb, activeCreditorData);
+    dispAmount = cm.crTotal;
+    dispSaldo = cm.crSaldo;
+    dispAvance = cm.crAvance;
+    dispAb = allAb.filter(a => a.acreedor_nombre === targetCreditor || !a.acreedor_nombre);
   }
-  
-  const paid = dispAb.reduce((s, a) => s + +a.monto, 0);
-  const saldo = Math.max(0, dispAmount - paid);
-  const avance = dispAmount > 0 ? Math.min(1, paid / dispAmount) : 0;
 
   app.innerHTML = `
   <div class="top">
@@ -1096,16 +1099,16 @@ async function vShared(tkn) {
     <div style="display:flex; gap:8px; align-items:center;">
       <span class="user-pill">${t('readOnly')} ${targetCreditor ? '· ' + e(targetCreditor) : ''}</span>
       <button class="t" onclick="toggleLang()" style="color:var(--w); background:var(--c); border:1px solid var(--l); padding:6px 12px; border-radius:20px; font-size:12px;">
-        🌐 ${currentLang === 'es' ? 'EN' : 'ES'}
+        ${currentLang === 'es' ? 'EN' : 'ES'}
       </button>
     </div>
   </div>
   <div class="card" style="text-align:center;padding:24px">
     <h2>${e(d.nombre)} ${targetCreditor ? '(' + e(targetCreditor) + ')' : ''}</h2>
-    <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(saldo, d.moneda)}</div>
-    <div class="m">${t('remainingBalance')} ${fm(dispAmount, d.moneda)} ${t('originalSuffix')}</div>
-    ${bar(avance)}
-    <div class="r m"><span>${Math.round(avance * 100)}% ${t('paidOff')}</span></div>
+    <div style="font-size:36px;font-weight:800;margin:15px 0" class="o">${fm(dispSaldo, d.moneda)}</div>
+    <div class="m">${t('remainingOfPrefix')} ${fm(dispAmount, d.moneda)} ${t('originalSuffix')}</div>
+    ${bar(dispAvance)}
+    <div class="r m"><span>${Math.round(dispAvance * 100)}% ${t('paidOff')}</span></div>
   </div>
 
   <div class="card">
